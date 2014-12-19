@@ -1,0 +1,8 @@
+[package]
+
+name = "extprim"
+version = "0.1.0"
+authors = ["kennytm <kennytm@gmail.com>"]
+description = "Extra primitive types (u128)"
+repository = "https://github.com/kennytm/extprim"
+license = "Apache-2.0"
