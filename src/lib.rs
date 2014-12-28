@@ -1,3 +1,10 @@
-#[test]
-fn it_works() {
-}
+#![feature(asm)]
+#![feature(slicing_syntax)]
+#![feature(macro_rules)]
+
+//! This crate provides some extra primitive types.
+
+extern crate test;
+
+pub mod u128;
+
