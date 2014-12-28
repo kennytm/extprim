@@ -7,8 +7,10 @@ use std::fmt;
 use std::num::{NumCast, Int, UnsignedInt, FromStrRadix};
 use std::u64;
 use std::str::FromStr;
-use std::mem::{uninitialized, transmute_copy};
+use std::mem::transmute_copy;
 use std::intrinsics::TypeId;
+
+use compiler_rt::{udiv128, umod128, udivmod128};
 
 //{{{ Structure
 
@@ -354,16 +356,16 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
     let d = right & 0xffffffff;
 
     let lo = b * d;
-    let mid = a * d + b * c;
-    let hi = a * c;
+    let (mid, carry) = unsafe { u64_add_with_overflow(a * d, b * c) };
+    let hi = a * c + if carry { 1 << 32 } else { 0 };
 
-    u128::from_parts(lo, hi) + u128::from_parts(mid >> 32, mid << 32)
+    u128::from_parts(hi, lo) + u128::from_parts(mid >> 32, mid << 32)
 }
 
 #[cfg(target_arch="x86_64")]
 fn u64_long_mul(left: u64, right: u64) -> u128 {
     unsafe {
-        let mut result: u128 = uninitialized();
+        let mut result: u128 = ::std::mem::uninitialized();
         asm!("
             movq $2, %rax
             mulq $3
@@ -399,6 +401,7 @@ impl Mul<u64, u128> for u128 {
 
 #[cfg(test)]
 mod mul_tests {
+    use std::u64;
     use u128::{u128, u64_long_mul};
     use test::{Bencher, black_box};
 
@@ -438,6 +441,8 @@ mod mul_tests {
         assert_eq!(u128::from_parts(0xaaa4d56f5b2f577, 0x916fb81166049cc3),
                     u64_long_mul(6263979403966582069, 2263184174907185431));
         assert_eq!(u128::new(10), u64_long_mul(2, 5));
+        assert_eq!(u128::from_parts(0xfffffffffffffffe, 1),
+                    u64_long_mul(u64::MAX, u64::MAX));
     }
 
     #[test]
@@ -499,18 +504,12 @@ mod mul_tests {
 
 //{{{ Div, Rem
 
-extern "C" {
-    fn __udivti3(a: u128, b: u128) -> u128;
-    fn __umodti3(a: u128, b: u128) -> u128;
-    fn __udivmodti4(a: u128, b: u128, rem: *mut u128) -> u128;
-}
-
 impl Div<u128, u128> for u128 {
     fn div(self, other: u128) -> u128 {
         if other == ZERO {
             panic!("attempted to divide by zero");
         } else {
-            unsafe { __udivti3(self, other) }
+            udiv128(self, other)
         }
     }
 }
@@ -520,7 +519,7 @@ impl Rem<u128, u128> for u128 {
         if other == ZERO {
             panic!("attempted remainder with a divisor of zero");
         } else {
-            unsafe { __umodti3(self, other) }
+            umod128(self, other)
         }
     }
 }
@@ -534,11 +533,7 @@ pub fn div_rem(numerator: u128, denominator: u128) -> (u128, u128) {
     if denominator == ZERO {
         panic!("attempted to divide by zero");
     } else {
-        unsafe {
-            let mut remainder: u128 = uninitialized();
-            let quotient = __udivmodti4(numerator, denominator, &mut remainder);
-            (quotient, remainder)
-        }
+        udivmod128(numerator, denominator)
     }
 }
 
@@ -777,7 +772,7 @@ impl Int for u128 {
         if other == ZERO {
             None
         } else {
-            Some(unsafe { __udivti3(self, other) })
+            Some(udiv128(self, other))
         }
     }
 }

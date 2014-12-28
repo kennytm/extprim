@@ -7,4 +7,5 @@
 extern crate test;
 
 pub mod u128;
+mod compiler_rt;
 
