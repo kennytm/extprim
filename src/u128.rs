@@ -4,12 +4,13 @@
 
 use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
 use std::fmt;
-use std::num::{NumCast, Int, UnsignedInt, FromStrRadix};
+use std::num::{NumCast, Int, UnsignedInt, SignedInt, FromStrRadix};
 use std::u64;
 use std::str::FromStr;
 use std::mem::transmute_copy;
 use std::intrinsics::TypeId;
 
+use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 
 //{{{ Structure
@@ -45,10 +46,14 @@ pub const ONE: u128 = u128 { lo: 1, hi: 0 };
 #[allow(non_camel_case_types)]
 #[unstable]
 pub struct u128 {
+    // TODO these two fields are public because of E0015.
+
     /// The lower 64-bit of the number.
+    #[experimental="Public only to allow constant creation."]
     pub lo: u64,
 
     /// The higher 64-bit of the number.
+    #[experimental="Public only to allow constant creation."]
     pub hi: u64,
 }
 
@@ -70,6 +75,21 @@ impl u128 {
     #[unstable]
     pub fn from_parts(hi: u64, lo: u64) -> u128 {
         u128 { lo: lo, hi: hi }
+    }
+
+    /// Fetch the lower-64-bit of the number.
+    pub fn low64(self) -> u64 {
+        self.lo
+    }
+
+    /// Fetch the higher-64-bit of the number.
+    pub fn high64(self) -> u64 {
+        self.hi
+    }
+
+    /// Convert this number to signed without checking.
+    pub fn as_i128(self) -> i128 {
+        i128::from_parts(self.hi as i64, self.lo)
     }
 }
 
@@ -241,35 +261,39 @@ mod bitwise_tests {
 
 impl Shl<uint, u128> for u128 {
     fn shl(self, shift: uint) -> u128 {
-        if (shift & 64) != 0 {
-            u128 { lo: 0, hi: self.lo << (shift & 63) }
+        let lo = self.lo;
+        let hi = self.hi;
+
+        let (lo, hi) = if (shift & 64) != 0 {
+            (0, lo << (shift & 63))
         } else {
-            u128 {
-                lo: self.lo << shift,
-                hi: if shift == 0 {
-                    self.hi << shift
-                } else {
-                    self.hi << shift | self.lo >> (64 - shift)
-                },
-            }
-        }
+            (lo << shift, if shift == 0 {
+                hi << shift
+            } else {
+                hi << shift | lo >> (64 - shift)
+            })
+        };
+
+        u128::from_parts(hi, lo)
     }
 }
 
 impl Shr<uint, u128> for u128 {
     fn shr(self, shift: uint) -> u128 {
-        if (shift & 64) != 0 {
-            u128 { hi: 0, lo: self.hi >> (shift & 63) }
+        let lo = self.lo;
+        let hi = self.hi;
+
+        let (hi, lo) = if (shift & 64) != 0 {
+            (0, hi >> (shift & 63))
         } else {
-            u128 {
-                hi: self.hi >> shift,
-                lo: if shift == 0 {
-                    self.lo >> shift
-                } else {
-                    self.lo >> shift | self.hi << (64 - shift)
-                },
-            }
-        }
+            (hi >> shift, if shift == 0 {
+                lo >> shift
+            } else {
+                lo >> shift | hi << (64 - shift)
+            })
+        };
+
+        u128::from_parts(hi, lo)
     }
 }
 
@@ -307,6 +331,16 @@ mod shift_tests {
                     u128::from_parts(0x53f09dac5b28f152, 0x0));
         assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << 120,
                     u128::from_parts(0x5200000000000000, 0x0));
+
+
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << 0,
+                    u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << 1,
+                    u128::from_parts(0xf004a6c7bb9aa3b0, 0xa13af1c94601179a));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << 64,
+                    u128::from_parts(0x509d78e4a3008bcd, 0x0));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << 120,
+                    u128::from_parts(0xcd00000000000000, 0x0));
     }
 
     #[test]
@@ -319,6 +353,15 @@ mod shift_tests {
                     u128::from_parts(0x0, 0x1e5c7801b0e575f7));
         assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> 120,
                     u128::from_parts(0x0, 0x1e));
+
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> 0,
+                    u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> 1,
+                    u128::from_parts(0x7c0129b1eee6a8ec, 0x284ebc72518045e6));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> 64,
+                    u128::from_parts(0x0, 0xf8025363ddcd51d8));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> 120,
+                    u128::from_parts(0x0, 0xf8));
     }
 
     #[bench]
@@ -626,8 +669,17 @@ impl NumCast for u128 {
     fn from<T: ToPrimitive + 'static>(n: T) -> Option<u128> {
         // TODO: Rust doesn't support specialization, thus this mess.
         //       See rust-lang/rust#7059. LLVM is able to optimize this though.
-        if TypeId::of::<T>() == TypeId::of::<u128>() {
+        let typeid = TypeId::of::<T>();
+
+        if typeid == TypeId::of::<u128>() {
             Some(unsafe { transmute_copy(&n) })
+        } else if typeid == TypeId::of::<i128>() {
+            let n: i128 = unsafe { transmute_copy(&n) };
+            if n.is_negative() {
+                None
+            } else {
+                Some(n.as_u128())
+            }
         } else {
             n.to_u64().map(u128::new)
         }
@@ -639,6 +691,7 @@ mod num_cast_tests {
     use std::u64;
     use std::num::NumCast;
     use u128::{u128, ONE, MAX};
+    use i128::i128;
 
     #[test]
     fn test_num_cast() {
@@ -647,6 +700,9 @@ mod num_cast_tests {
         assert_eq!(Some(ONE), NumCast::from(1i8));
         assert_eq!(Some(u128::new(u64::MAX)), NumCast::from(u64::MAX));
         assert_eq!(Some(MAX), NumCast::from(MAX));
+
+        assert_eq!(Some(ONE), NumCast::from(i128::new(1)));
+        assert_eq!(None::<u128>, NumCast::from(i128::new(-1)));
     }
 }
 
@@ -654,15 +710,6 @@ mod num_cast_tests {
 //}}}
 
 //{{{ Int
-
-macro_rules! try_option {
-    ($e:expr) => (
-        match $e {
-            Some(e) => e,
-            None => return None,
-        }
-    );
-}
 
 impl Int for u128 {
     fn zero() -> u128 { ZERO }
@@ -948,7 +995,7 @@ impl FromStr for u128 {
 
 #[cfg(test)]
 mod from_str_tests {
-    use u128::{u128, MAX};
+    use u128::{u128, MAX, ZERO};
     use std::num::FromStrRadix;
 
     #[test]
@@ -997,6 +1044,8 @@ mod from_str_tests {
             assert_eq!(Some(v), FromStrRadix::from_str_radix(*res, base2+2));
         }
 
+        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0", 2));
+        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
         assert_eq!(None::<u128>, FromStrRadix::from_str_radix("123", 3));
         assert_eq!(None::<u128>, FromStrRadix::from_str_radix("-1", 10));
         assert_eq!(None::<u128>, FromStrRadix::from_str_radix("", 10));
