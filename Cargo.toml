@@ -7,5 +7,7 @@ repository = "https://github.com/kennytm/extprim"
 license = "Apache-2.0"
 keywords = ["primitives","u128","i128"]
 
-
+[dev-dependencies.extprim_literals]
+path = "extprim_literals"
+version = "0.2.0"
 

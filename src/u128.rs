@@ -72,7 +72,7 @@ impl u128 {
     /// ```
     /// use extprim::u128::u128;
     /// let number = u128::from_parts(6692605942, 14083847773837265618);
-    /// assert_eq!(format!("{}", number), "123456789012345678901234567890");
+    /// assert_eq!(number.to_string(), "123456789012345678901234567890");
     /// ```
     #[unstable]
     pub fn from_parts(hi: u64, lo: u64) -> u128 {
