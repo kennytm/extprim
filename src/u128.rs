@@ -50,10 +50,12 @@ pub struct u128 {
 
     /// The lower 64-bit of the number.
     #[experimental="Public only to allow constant creation."]
+    #[doc(hidden)]
     pub lo: u64,
 
     /// The higher 64-bit of the number.
     #[experimental="Public only to allow constant creation."]
+    #[doc(hidden)]
     pub hi: u64,
 }
 

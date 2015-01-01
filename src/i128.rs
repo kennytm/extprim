@@ -46,7 +46,10 @@ pub const ONE: i128 = i128(::u128::ONE);
 #[repr(C)]
 #[allow(non_camel_case_types)]
 #[unstable]
-pub struct i128(u128);
+pub struct i128(
+    #[doc(hidden)]
+    pub u128,
+);
 
 impl i128 {
     /// Constructs a new 128-bit integer from a 64-bit integer.
