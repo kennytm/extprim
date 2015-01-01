@@ -6,6 +6,7 @@ description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
 license = "Apache-2.0"
 keywords = ["primitives","u128","i128"]
+documentation = "http://www.rust-ci.org/kennytm/extprim/doc/extprim/index.html"
 
 [dev-dependencies.extprim_literals]
 path = "extprim_literals"
