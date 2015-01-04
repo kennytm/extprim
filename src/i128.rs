@@ -3,11 +3,13 @@
 //! Signed 128-bit integer.
 
 use u128::u128;
-use std::num::{Int, NumCast, SignedInt, FromStrRadix};
+use std::num::{Int, NumCast, SignedInt, FromStrRadix, FromPrimitive, ToPrimitive};
 use std::mem::transmute_copy;
 use std::str::FromStr;
 use std::intrinsics::TypeId;
 use std::fmt;
+use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
+use std::cmp::{PartialOrd, Ord, Ordering};
 
 #[cfg(not(target_arch="x86_64"))]
 use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
@@ -42,7 +44,7 @@ pub const ONE: i128 = i128(::u128::ONE);
 
 
 /// An signed 128-bit number.
-#[deriving(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
+#[derive(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
 #[unstable]
@@ -105,21 +107,25 @@ mod structure_tests {
 
 //{{{ Add, Sub
 
-impl Add<i128, i128> for i128 {
+impl Add for i128 {
+    type Output = i128;
     #[inline(always)]
     fn add(self, other: i128) -> i128 {
         i128(self.0 + other.0)
     }
 }
 
-impl Sub<i128, i128> for i128 {
+impl Sub for i128 {
+    type Output = i128;
     #[inline(always)]
     fn sub(self, other: i128) -> i128 {
         i128(self.0 - other.0)
     }
 }
 
-impl Neg<i128> for i128 {
+impl Neg for i128 {
+    type Output = i128;
+    #[inline(always)]
     fn neg(self) -> i128 {
         i128(-self.0)
     }
@@ -184,7 +190,7 @@ mod cmp_tests {
     use i128::{i128, MIN, MAX};
     use u128::u128;
 
-    const TEST_CASES: &'static [i128, ..7] = &[
+    const TEST_CASES: &'static [i128; 7] = &[
         MIN,
         i128(u128 { lo: 0, hi: -1 }),
         i128(u128 { lo: !0, hi: -1 }),
@@ -208,28 +214,32 @@ mod cmp_tests {
 
 //{{{ Not, BitAnd, BitOr, BitXor
 
-impl Not<i128> for i128 {
+impl Not for i128 {
+    type Output = i128;
     #[inline(always)]
     fn not(self) -> i128 {
         i128(!self.0)
     }
 }
 
-impl BitAnd<i128, i128> for i128 {
+impl BitAnd for i128 {
+    type Output = i128;
     #[inline(always)]
     fn bitand(self, other: i128) -> i128 {
         i128(self.0 & other.0)
     }
 }
 
-impl BitOr<i128, i128> for i128 {
+impl BitOr for i128 {
+    type Output = i128;
     #[inline(always)]
     fn bitor(self, other: i128) -> i128 {
         i128(self.0 | other.0)
     }
 }
 
-impl BitXor<i128, i128> for i128 {
+impl BitXor for i128 {
+    type Output = i128;
     #[inline(always)]
     fn bitxor(self, other: i128) -> i128 {
         i128(self.0 ^ other.0)
@@ -272,13 +282,17 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<uint, i128> for i128 {
+impl Shl<uint> for i128 {
+    type Output = i128;
+
     fn shl(self, shift: uint) -> i128 {
         i128(self.0 << shift)
     }
 }
 
-impl Shr<uint, i128> for i128 {
+impl Shr<uint> for i128 {
+    type Output = i128;
+
     fn shr(self, shift: uint) -> i128 {
         let hi = self.high64();
         let lo = self.low64();
@@ -378,7 +392,9 @@ mod shift_tests {
 
 //{{{ Mul
 
-impl Mul<i128, i128> for i128 {
+impl Mul for i128 {
+    type Output = i128;
+
     fn mul(self, other: i128) -> i128 {
         i128(self.0 * other.0)
     }
@@ -414,7 +430,9 @@ fn sign_abs(x: i128) -> (bool, u128) {
     }
 }
 
-impl Div<i128, i128> for i128 {
+impl Div for i128 {
+    type Output = i128;
+
     fn div(self, other: i128) -> i128 {
         let (sa, a) = sign_abs(self);
         let (sb, b) = sign_abs(other);
@@ -423,7 +441,9 @@ impl Div<i128, i128> for i128 {
     }
 }
 
-impl Rem<i128, i128> for i128 {
+impl Rem for i128 {
+    type Output = i128;
+
     fn rem(self, other: i128) -> i128 {
         let (sa, a) = sign_abs(self);
         let (_, b) = sign_abs(other);
@@ -924,10 +944,10 @@ impl fmt::Show for i128 {
         if !self.is_negative() {
             self.0.fmt(formatter)
         } else if *self == MIN {
-            formatter.pad_integral(false, "", b"170141183460469231731687303715884105728")
+            formatter.pad_integral(false, "", "170141183460469231731687303715884105728")
         } else {
             let core_string = format!("{}", (-*self).0);
-            formatter.pad_integral(false, "", core_string.as_bytes())
+            formatter.pad_integral(false, "", &*core_string)
         }
     }
 }
@@ -951,6 +971,9 @@ mod show_tests {
                    format!("{:+042}", MAX));
         assert_eq!("-00170141183460469231731687303715884105728",
                    format!("{:+042}", MIN));
+
+        // Sanity test
+        assert_eq!("ff", format!("{:x}", -1i8));
     }
 }
 

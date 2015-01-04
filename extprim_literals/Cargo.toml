@@ -1,6 +1,6 @@
 [package]
 name = "extprim_literals"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Literal macros for extprim"
 repository = "https://github.com/kennytm/extprim"
@@ -12,5 +12,5 @@ plugin = true
 
 [dependencies.extprim]
 path = ".."
-version = "0.2.0"
+version = "~0.2"
 

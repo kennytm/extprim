@@ -4,11 +4,14 @@
 
 use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
 use std::fmt;
-use std::num::{NumCast, Int, UnsignedInt, SignedInt, FromStrRadix};
+use std::num::{NumCast, Int, UnsignedInt, SignedInt, FromStrRadix,
+               FromPrimitive, ToPrimitive};
 use std::u64;
 use std::str::FromStr;
 use std::mem::transmute_copy;
 use std::intrinsics::TypeId;
+use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
+use std::cmp::{PartialOrd, Ord, Ordering};
 
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
@@ -41,7 +44,7 @@ pub const ZERO: u128 = MIN;
 pub const ONE: u128 = u128 { lo: 1, hi: 0 };
 
 /// An unsigned 128-bit number.
-#[deriving(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
+#[derive(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
 #[unstable]
@@ -99,7 +102,8 @@ impl u128 {
 
 //{{{ Add, Sub
 
-impl Add<u128, u128> for u128 {
+impl Add for u128 {
+    type Output = u128;
     #[inline(always)]
     fn add(self, other: u128) -> u128 {
         let (new_lo, carry) = unsafe { u64_add_with_overflow(self.lo, other.lo) };
@@ -108,7 +112,8 @@ impl Add<u128, u128> for u128 {
     }
 }
 
-impl Sub<u128, u128> for u128 {
+impl Sub for u128 {
+    type Output = u128;
     #[inline(always)]
     fn sub(self, other: u128) -> u128 {
         let (new_lo, borrow) = unsafe { u64_sub_with_overflow(self.lo, other.lo) };
@@ -117,7 +122,8 @@ impl Sub<u128, u128> for u128 {
     }
 }
 
-impl Neg<u128> for u128 {
+impl Neg for u128 {
+    type Output = u128;
     fn neg(self) -> u128 {
         !self + ONE
     }
@@ -197,28 +203,32 @@ mod cmp_tests {
 
 //{{{ Not, BitAnd, BitOr, BitXor
 
-impl Not<u128> for u128 {
+impl Not for u128 {
+    type Output = u128;
     #[inline(always)]
     fn not(self) -> u128 {
         u128 { lo: !self.lo, hi: !self.hi }
     }
 }
 
-impl BitAnd<u128, u128> for u128 {
+impl BitAnd for u128 {
+    type Output = u128;
     #[inline(always)]
     fn bitand(self, other: u128) -> u128 {
         u128 { lo: self.lo & other.lo, hi: self.hi & other.hi }
     }
 }
 
-impl BitOr<u128, u128> for u128 {
+impl BitOr for u128 {
+    type Output = u128;
     #[inline(always)]
     fn bitor(self, other: u128) -> u128 {
         u128 { lo: self.lo | other.lo, hi: self.hi | other.hi }
     }
 }
 
-impl BitXor<u128, u128> for u128 {
+impl BitXor for u128 {
+    type Output = u128;
     #[inline(always)]
     fn bitxor(self, other: u128) -> u128 {
         u128 { lo: self.lo ^ other.lo, hi: self.hi ^ other.hi }
@@ -261,7 +271,9 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<uint, u128> for u128 {
+impl Shl<uint> for u128 {
+    type Output = u128;
+
     fn shl(self, shift: uint) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
@@ -280,7 +292,9 @@ impl Shl<uint, u128> for u128 {
     }
 }
 
-impl Shr<uint, u128> for u128 {
+impl Shr<uint> for u128 {
+    type Output = u128;
+
     fn shr(self, shift: uint) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
@@ -424,7 +438,9 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
     }
 }
 
-impl Mul<u128, u128> for u128 {
+impl Mul for u128 {
+    type Output = u128;
+
     fn mul(self, other: u128) -> u128 {
         let a = self.hi;
         let b = self.lo;
@@ -436,7 +452,9 @@ impl Mul<u128, u128> for u128 {
     }
 }
 
-impl Mul<u64, u128> for u128 {
+impl Mul<u64> for u128 {
+    type Output = u128;
+
     fn mul(self, other: u64) -> u128 {
         let mut low = u64_long_mul(self.lo, other);
         low.hi += self.hi * other;
@@ -549,7 +567,9 @@ mod mul_tests {
 
 //{{{ Div, Rem
 
-impl Div<u128, u128> for u128 {
+impl Div for u128 {
+    type Output = u128;
+
     fn div(self, other: u128) -> u128 {
         if other == ZERO {
             panic!("attempted to divide by zero");
@@ -559,7 +579,9 @@ impl Div<u128, u128> for u128 {
     }
 }
 
-impl Rem<u128, u128> for u128 {
+impl Rem for u128 {
+    type Output = u128;
+
     fn rem(self, other: u128) -> u128 {
         if other == ZERO {
             panic!("attempted remainder with a divisor of zero");
@@ -1076,7 +1098,7 @@ impl fmt::Show for u128 {
                 format!("{}{:019}{:019}", hi.lo, mid.lo, lo.lo)
             };
 
-            formatter.pad_integral(true, "", core_string.as_bytes())
+            formatter.pad_integral(true, "", &*core_string)
         }
     }
 }
@@ -1087,7 +1109,7 @@ impl fmt::Binary for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:b}{:064b}", self.hi, self.lo);
-            formatter.pad_integral(true, "0b", core_string.as_bytes())
+            formatter.pad_integral(true, "0b", &*core_string)
         }
     }
 }
@@ -1098,7 +1120,7 @@ impl fmt::LowerHex for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:x}{:016x}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", core_string.as_bytes())
+            formatter.pad_integral(true, "0x", &*core_string)
         }
     }
 }
@@ -1109,7 +1131,7 @@ impl fmt::UpperHex for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:X}{:016X}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", core_string.as_bytes())
+            formatter.pad_integral(true, "0x", &*core_string)
         }
     }
 }
@@ -1130,7 +1152,7 @@ impl fmt::Octal for u128 {
             return lo.fmt(formatter);
         };
 
-        formatter.pad_integral(true, "0o", core_string.as_bytes())
+        formatter.pad_integral(true, "0o", &*core_string)
     }
 }
 

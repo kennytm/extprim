@@ -1,6 +1,9 @@
 #![feature(asm)]
 #![feature(slicing_syntax)]
 #![feature(macro_rules)]
+#![feature(associated_types)]
+#![feature(default_type_params)]
+#![feature(old_orphan_check)] // rust-lang/rust#20477
 
 //! This crate provides some extra simple types.
 //!
