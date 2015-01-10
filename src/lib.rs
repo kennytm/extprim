@@ -1,9 +1,7 @@
+#![allow(unstable)]
+
 #![feature(asm)]
 #![feature(slicing_syntax)]
-#![feature(macro_rules)]
-#![feature(associated_types)]
-#![feature(default_type_params)]
-#![feature(old_orphan_check)] // rust-lang/rust#20477
 
 //! This crate provides some extra simple types.
 //!
@@ -24,15 +22,15 @@
 //! one should use the `u128!` and `i128!` macros.
 //!
 //! ```
-//! #![feature(phase)]
-//! #[phase(plugin)]
-//! extern crate extprim_literals;
+//! #![feature(plugin)]
+//!
+//! #[plugin] extern crate extprim_literals;
 //! extern crate extprim;
 //! use extprim::i128::i128;
 //!
 //! const SOME_BIG_VALUE: i128 = i128!(-123_456_789_987_654_321_000);
 //! fn main() {
-//!     assert_eq!("-123456789987654321000", SOME_BIG_VALUE.to_string());
+//!     assert_eq!("-123456789987654321000", format!("{}", SOME_BIG_VALUE));
 //! }
 //! ```
 //!

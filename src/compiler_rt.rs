@@ -96,7 +96,7 @@ mod detail {
         let mut q = n << (128 - sr);
         let mut r = n >> sr;
         let mut carry = 0;
-        for _ in range(0, sr) {
+        for _ in (0 .. sr) {
             r = r << 1;
             r.lo |= q.hi >> 63;
             q = q << 1;

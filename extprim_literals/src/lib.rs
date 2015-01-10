@@ -1,7 +1,8 @@
+#![allow(unstable)]
+
 #![feature(slicing_syntax)]
 #![feature(plugin_registrar)]
 #![feature(quote)]
-#![feature(macro_rules)]
 
 extern crate extprim;
 extern crate syntax;
@@ -120,10 +121,4 @@ fn from_literal<T: Int>(s: &str, is_negative: bool) -> Option<T> {
 
     Some(res)
 }
-
-/*
-fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> Box<MacResult + 'static> {
-
-}
-*/
 

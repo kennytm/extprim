@@ -18,11 +18,11 @@ use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
 
 /// Number of bits a signed 128-bit number occupies.
 #[stable]
-pub const BITS: uint = 128;
+pub const BITS: usize = 128;
 
 /// Number of bytes a signed 128-bit number occupies.
 #[stable]
-pub const BYTES: uint = 16;
+pub const BYTES: usize = 16;
 
 /// The smallest signed 128-bit integer
 /// (`-170_141_183_460_469_231_731_687_303_715_884_105_728`).
@@ -66,7 +66,7 @@ impl i128 {
     /// ```
     /// use extprim::i128::i128;
     /// let number = i128::from_parts(-6692605943, 4362896299872285998);
-    /// assert_eq!(number.to_string(), "-123456789012345678901234567890");
+    /// assert_eq!(format!("{}", number), "-123456789012345678901234567890");
     /// // Note: -123456789012345678901234567890 = -6692605943 << 64 | 4362896299872285998
     /// ```
     #[unstable]
@@ -282,18 +282,18 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<uint> for i128 {
+impl Shl<usize> for i128 {
     type Output = i128;
 
-    fn shl(self, shift: uint) -> i128 {
+    fn shl(self, shift: usize) -> i128 {
         i128(self.0 << shift)
     }
 }
 
-impl Shr<uint> for i128 {
+impl Shr<usize> for i128 {
     type Output = i128;
 
-    fn shr(self, shift: uint) -> i128 {
+    fn shr(self, shift: usize) -> i128 {
         let hi = self.high64();
         let lo = self.low64();
 
@@ -317,7 +317,7 @@ mod shift_tests {
     use test::{Bencher, black_box};
 
     // randomize shift range to avoid possible branch prediction effect.
-    const BENCH_SHIFTS: &'static [uint] = &[
+    const BENCH_SHIFTS: &'static [usize] = &[
         77, 45, 57, 7, 34, 75, 38, 89, 89, 66, 16, 111, 66, 123, 14, 80, 94, 43,
         46, 86, 121, 31, 123, 33, 23, 57, 50, 28, 26, 46, 8, 88, 74, 55, 108,
         127, 1, 70, 73, 2, 1, 45, 36, 96, 124, 124, 91, 63, 25, 94, 8, 68, 41,
@@ -559,7 +559,7 @@ impl NumCast for i128 {
             } else {
                 Some(i128(n))
             }
-        } else if typeid == TypeId::of::<u64>() || typeid == TypeId::of::<uint>() {
+        } else if typeid == TypeId::of::<u64>() || typeid == TypeId::of::<usize>() {
             n.to_u64().map(|x| i128(u128::new(x)))
         } else {
             n.to_i64().map(i128::new)
@@ -598,11 +598,11 @@ impl Int for i128 {
     fn min_value() -> i128 { MIN }
     fn max_value() -> i128 { MAX }
 
-    fn count_ones(self) -> uint { self.0.count_ones() }
-    fn leading_zeros(self) -> uint { self.0.leading_zeros() }
-    fn trailing_zeros(self) -> uint { self.0.trailing_zeros() }
-    fn rotate_left(self, shift: uint) -> i128 { i128(self.0.rotate_left(shift)) }
-    fn rotate_right(self, shift: uint) -> i128 { i128(self.0.rotate_right(shift)) }
+    fn count_ones(self) -> usize { self.0.count_ones() }
+    fn leading_zeros(self) -> usize { self.0.leading_zeros() }
+    fn trailing_zeros(self) -> usize { self.0.trailing_zeros() }
+    fn rotate_left(self, shift: usize) -> i128 { i128(self.0.rotate_left(shift)) }
+    fn rotate_right(self, shift: usize) -> i128 { i128(self.0.rotate_right(shift)) }
     fn swap_bytes(self) -> i128 { i128(self.0.swap_bytes()) }
 
     #[cfg(not(target_arch="x86_64"))]
@@ -815,7 +815,7 @@ impl SignedInt for i128 {
 //{{{ FromStr, FromStrRadix
 
 impl FromStrRadix for i128 {
-    fn from_str_radix(src: &str, radix: uint) -> Option<i128> {
+    fn from_str_radix(src: &str, radix: usize) -> Option<i128> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
@@ -910,7 +910,7 @@ mod from_str_tests {
 
 //}}}
 
-//{{{ Binary, LowerHex, UpperHex, Octal, Show
+//{{{ String, Binary, LowerHex, UpperHex, Octal, Show
 
 // As of 0.13, all signed numbers will be printed as unsigned in binary, octal
 // and hex mode.
@@ -939,7 +939,7 @@ impl fmt::Octal for i128 {
     }
 }
 
-impl fmt::Show for i128 {
+impl fmt::String for i128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if !self.is_negative() {
             self.0.fmt(formatter)
@@ -949,6 +949,15 @@ impl fmt::Show for i128 {
             let core_string = format!("{}", (-*self).0);
             formatter.pad_integral(false, "", &*core_string)
         }
+    }
+}
+
+impl fmt::Show for i128 {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        try!(formatter.write_str("i128!("));
+        try!(fmt::Show::fmt(self, formatter));
+        try!(formatter.write_str(")"));
+        Ok(())
     }
 }
 

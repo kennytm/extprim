@@ -20,11 +20,11 @@ use compiler_rt::{udiv128, umod128, udivmod128};
 
 /// Number of bits an unsigned 128-bit number occupies.
 #[stable]
-pub const BITS: uint = 128;
+pub const BITS: usize = 128;
 
 /// Number of bytes an unsigned 128-bit number occupies.
 #[stable]
-pub const BYTES: uint = 16;
+pub const BYTES: usize = 16;
 
 /// The smallest unsigned 128-bit integer (0).
 #[stable]
@@ -75,7 +75,7 @@ impl u128 {
     /// ```
     /// use extprim::u128::u128;
     /// let number = u128::from_parts(6692605942, 14083847773837265618);
-    /// assert_eq!(number.to_string(), "123456789012345678901234567890");
+    /// assert_eq!(format!("{}", number), "123456789012345678901234567890");
     /// ```
     #[unstable]
     pub fn from_parts(hi: u64, lo: u64) -> u128 {
@@ -271,10 +271,10 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<uint> for u128 {
+impl Shl<usize> for u128 {
     type Output = u128;
 
-    fn shl(self, shift: uint) -> u128 {
+    fn shl(self, shift: usize) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
 
@@ -292,10 +292,10 @@ impl Shl<uint> for u128 {
     }
 }
 
-impl Shr<uint> for u128 {
+impl Shr<usize> for u128 {
     type Output = u128;
 
-    fn shr(self, shift: uint) -> u128 {
+    fn shr(self, shift: usize) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
 
@@ -319,7 +319,7 @@ mod shift_tests {
     use test::{Bencher, black_box};
 
     // randomize shift range to avoid possible branch prediction effect.
-    const BENCH_SHIFTS: &'static [uint] = &[
+    const BENCH_SHIFTS: &'static [usize] = &[
         77, 45, 57, 7, 34, 75, 38, 89, 89, 66, 16, 111, 66, 123, 14, 80, 94, 43,
         46, 86, 121, 31, 123, 33, 23, 57, 50, 28, 26, 46, 8, 88, 74, 55, 108,
         127, 1, 70, 73, 2, 1, 45, 36, 96, 124, 124, 91, 63, 25, 94, 8, 68, 41,
@@ -741,11 +741,11 @@ impl Int for u128 {
     fn min_value() -> u128 { MIN }
     fn max_value() -> u128 { MAX }
 
-    fn count_ones(self) -> uint {
+    fn count_ones(self) -> usize {
         self.lo.count_ones() + self.hi.count_ones()
     }
 
-    fn leading_zeros(self) -> uint {
+    fn leading_zeros(self) -> usize {
         if self.hi == 0 {
             64 + self.lo.leading_zeros()
         } else {
@@ -753,7 +753,7 @@ impl Int for u128 {
         }
     }
 
-    fn trailing_zeros(self) -> uint {
+    fn trailing_zeros(self) -> usize {
         if self.lo == 0 {
             64 + self.hi.trailing_zeros()
         } else {
@@ -761,7 +761,7 @@ impl Int for u128 {
         }
     }
 
-    fn rotate_left(self, shift: uint) -> u128 {
+    fn rotate_left(self, shift: usize) -> u128 {
         let rotated = match shift & 63 {
             0 => self,
             n => u128 {
@@ -776,7 +776,7 @@ impl Int for u128 {
         }
     }
 
-    fn rotate_right(self, shift: uint) -> u128 {
+    fn rotate_right(self, shift: usize) -> u128 {
         self.rotate_left(128 - shift)
     }
 
@@ -989,7 +989,7 @@ impl UnsignedInt for u128 {}
 //{{{ FromStr, FromStrRadix
 
 impl FromStrRadix for u128 {
-    fn from_str_radix(src: &str, radix: uint) -> Option<u128> {
+    fn from_str_radix(src: &str, radix: usize) -> Option<u128> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
@@ -1081,9 +1081,9 @@ mod from_str_tests {
 
 //}}}
 
-//{{{ Binary, LowerHex, UpperHex, Octal, Show
+//{{{ Binary, LowerHex, UpperHex, Octal, String, Show
 
-impl fmt::Show for u128 {
+impl fmt::String for u128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if self.hi == 0 {
             self.lo.fmt(formatter)
@@ -1100,6 +1100,15 @@ impl fmt::Show for u128 {
 
             formatter.pad_integral(true, "", &*core_string)
         }
+    }
+}
+
+impl fmt::Show for u128 {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        try!(formatter.write_str("u128!("));
+        try!(fmt::Show::fmt(self, formatter));
+        try!(formatter.write_str(")"));
+        Ok(())
     }
 }
 
