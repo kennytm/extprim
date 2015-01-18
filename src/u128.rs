@@ -532,7 +532,7 @@ mod mul_tests {
         bencher.iter(|| {
             for a in BENCH_LONG_MUL.iter() {
                 for b in BENCH_LONG_MUL.iter() {
-                    black_box(u64_long_mul(*a, *b))
+                    black_box(u64_long_mul(*a, *b));
                 }
             }
         });
@@ -543,7 +543,7 @@ mod mul_tests {
         bencher.iter(|| {
             for a in BENCH_MUL.iter() {
                 for b in BENCH_MUL.iter() {
-                    black_box(*a * *b)
+                    black_box(*a * *b);
                 }
             }
         });
@@ -554,7 +554,7 @@ mod mul_tests {
         bencher.iter(|| {
             for a in BENCH_MUL.iter() {
                 for b in BENCH_MUL.iter() {
-                    black_box(*a * b.lo)
+                    black_box(*a * b.lo);
                 }
             }
         });
@@ -964,7 +964,7 @@ mod int_tests {
         bencher.iter(|| {
             for a in BENCH_CHECKED_ADD_SUB.iter() {
                 for b in BENCH_CHECKED_ADD_SUB.iter() {
-                    black_box(a.checked_add(*b))
+                    black_box(a.checked_add(*b));
                 }
             }
         })
@@ -975,7 +975,7 @@ mod int_tests {
         bencher.iter(|| {
             for a in BENCH_CHECKED_ADD_SUB.iter() {
                 for b in BENCH_CHECKED_ADD_SUB.iter() {
-                    black_box(a.checked_sub(*b))
+                    black_box(a.checked_sub(*b));
                 }
             }
         })
