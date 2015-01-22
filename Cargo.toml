@@ -1,6 +1,6 @@
 [package]
 name = "extprim"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
@@ -8,7 +8,6 @@ license = "Apache-2.0"
 keywords = ["primitives","u128","i128"]
 documentation = "http://www.rust-ci.org/kennytm/extprim/doc/extprim/index.html"
 
-[dev-dependencies.extprim_literals]
-path = "extprim_literals"
-version = "~0.2"
-
+[lib]
+name = "extprim"
+crate-type = ["dylib", "rlib"]

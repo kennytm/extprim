@@ -2,6 +2,8 @@
 
 #![feature(asm)]
 #![feature(slicing_syntax)]
+#![feature(plugin_registrar)]
+#![feature(quote)]
 
 //! This crate provides some extra simple types.
 //!
@@ -24,8 +26,7 @@
 //! ```
 //! #![feature(plugin)]
 //!
-//! #[plugin] extern crate extprim_literals;
-//! extern crate extprim;
+//! #[plugin] extern crate extprim;
 //! use extprim::i128::i128;
 //!
 //! const SOME_BIG_VALUE: i128 = i128!(-123_456_789_987_654_321_000);
@@ -36,6 +37,8 @@
 //!
 
 extern crate test;
+extern crate syntax;
+extern crate rustc;
 
 macro_rules! try_option {
     ($e:expr) => (
@@ -49,4 +52,5 @@ macro_rules! try_option {
 pub mod u128;
 pub mod i128;
 mod compiler_rt;
+pub mod literals;
 

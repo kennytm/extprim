@@ -1,8 +1,7 @@
 #![feature(plugin)]
 #![allow(unstable)]
 
-#[plugin] extern crate extprim_literals;
-extern crate extprim;
+#[plugin] extern crate extprim;
 
 use extprim::u128::u128;
 use extprim::i128::i128;

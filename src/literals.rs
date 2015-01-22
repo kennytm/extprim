@@ -1,17 +1,7 @@
-#![allow(unstable)]
-
-#![feature(slicing_syntax)]
-#![feature(plugin_registrar)]
-#![feature(quote)]
-
-extern crate extprim;
-extern crate syntax;
-extern crate rustc;
-
 use std::num::{cast, Int};
 
-use extprim::u128::u128;
-use extprim::i128::i128;
+use u128::u128;
+use i128::i128;
 
 use syntax::ast::TokenTree;
 use syntax::ast::TokenTree::TtToken;
@@ -85,16 +75,6 @@ fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult +
         cx.span_err(sp, err_msg);
         DummyResult::expr(sp)
     })
-}
-
-
-macro_rules! try_option {
-    ($e:expr) => (
-        match $e {
-            Some(e) => e,
-            None => return None,
-        }
-    );
 }
 
 fn from_literal<T: Int>(s: &str, is_negative: bool) -> Option<T> {

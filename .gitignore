@@ -1,6 +1,5 @@
 /target
 Cargo.lock
-/extprim_literals/target
 *.swp
 *.swo
 *.o
