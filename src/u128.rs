@@ -9,7 +9,7 @@ use std::num::{NumCast, Int, UnsignedInt, SignedInt, FromStrRadix,
 use std::u64;
 use std::str::FromStr;
 use std::mem::transmute_copy;
-use std::intrinsics::TypeId;
+use std::any::TypeId;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
 

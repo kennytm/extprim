@@ -6,7 +6,7 @@ use u128::u128;
 use std::num::{Int, NumCast, SignedInt, FromStrRadix, FromPrimitive, ToPrimitive};
 use std::mem::transmute_copy;
 use std::str::FromStr;
-use std::intrinsics::TypeId;
+use std::any::TypeId;
 use std::fmt;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
