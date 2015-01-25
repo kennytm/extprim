@@ -1083,7 +1083,7 @@ mod from_str_tests {
 
 //{{{ Binary, LowerHex, UpperHex, Octal, String, Show
 
-impl fmt::String for u128 {
+impl fmt::Display for u128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if self.hi == 0 {
             self.lo.fmt(formatter)
@@ -1103,10 +1103,10 @@ impl fmt::String for u128 {
     }
 }
 
-impl fmt::Show for u128 {
+impl fmt::Debug for u128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         try!(formatter.write_str("u128!("));
-        try!(fmt::Show::fmt(self, formatter));
+        try!(fmt::Display::fmt(self, formatter));
         try!(formatter.write_str(")"));
         Ok(())
     }

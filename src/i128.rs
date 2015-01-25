@@ -891,7 +891,7 @@ mod from_str_tests {
         let neg = i128::from_parts(-7620305690708017834, 34929685051752008);
         for (base2, res) in NEG_TEST_RESULTS.iter().enumerate() {
             assert_eq!(Some(neg), FromStrRadix::from_str_radix(*res, base2+2));
-            assert_eq!(Some(-neg), FromStrRadix::from_str_radix(res.slice_from(1), base2+2));
+            assert_eq!(Some(-neg), FromStrRadix::from_str_radix(&res[1..], base2+2));
         }
 
         assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0", 2));
@@ -939,7 +939,7 @@ impl fmt::Octal for i128 {
     }
 }
 
-impl fmt::String for i128 {
+impl fmt::Display for i128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         if !self.is_negative() {
             self.0.fmt(formatter)
@@ -952,10 +952,10 @@ impl fmt::String for i128 {
     }
 }
 
-impl fmt::Show for i128 {
+impl fmt::Debug for i128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         try!(formatter.write_str("i128!("));
-        try!(fmt::Show::fmt(self, formatter));
+        try!(fmt::Display::fmt(self, formatter));
         try!(formatter.write_str(")"));
         Ok(())
     }
