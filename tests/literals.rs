@@ -1,5 +1,4 @@
 #![feature(plugin)]
-#![allow(unstable)]
 
 #[plugin] extern crate extprim;
 

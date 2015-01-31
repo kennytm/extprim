@@ -1,9 +1,6 @@
-#![allow(unstable)]
-
 #![feature(asm)]
-#![feature(slicing_syntax)]
-#![feature(plugin_registrar)]
-#![feature(quote)]
+#![feature(rustc_private, plugin_registrar, quote)]
+#![feature(test, rand, hash, core, unicode, collections)]
 
 //! This crate provides some extra simple types.
 //!

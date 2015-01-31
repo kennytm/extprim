@@ -52,12 +52,12 @@ pub struct u128 {
     // TODO these two fields are public because of E0015.
 
     /// The lower 64-bit of the number.
-    #[experimental="Public only to allow constant creation."]
+    #[unstable="Public only to allow constant creation."]
     #[doc(hidden)]
     pub lo: u64,
 
     /// The higher 64-bit of the number.
-    #[experimental="Public only to allow constant creation."]
+    #[unstable="Public only to allow constant creation."]
     #[doc(hidden)]
     pub hi: u64,
 }
