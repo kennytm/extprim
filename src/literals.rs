@@ -77,6 +77,15 @@ fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult +
     })
 }
 
+macro_rules! try_option {
+    ($e:expr) => {
+        match $e {
+            Some(e) => e,
+            None => return None,
+        }
+    }
+}
+
 fn from_literal<T: Int>(s: &str, is_negative: bool) -> Option<T> {
     let mut res: T = Int::zero();
     let mut base: T = cast(10u64).unwrap();

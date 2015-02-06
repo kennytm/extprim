@@ -2,7 +2,6 @@
 
 //! Signed 128-bit integer.
 
-use u128::u128;
 use std::num::{Int, NumCast, SignedInt, FromStrRadix, FromPrimitive, ToPrimitive};
 use std::mem::transmute_copy;
 use std::str::FromStr;
@@ -10,9 +9,13 @@ use std::any::TypeId;
 use std::fmt;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
+use core::num::ParseIntError;
 
 #[cfg(not(target_arch="x86_64"))]
 use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
+
+use u128::u128;
+use error;
 
 //{{{ Structure
 
@@ -44,7 +47,7 @@ pub const ONE: i128 = i128(::u128::ONE);
 
 
 /// An signed 128-bit number.
-#[derive(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
+#[derive(Default, Copy, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
 #[unstable]
@@ -815,7 +818,9 @@ impl SignedInt for i128 {
 //{{{ FromStr, FromStrRadix
 
 impl FromStrRadix for i128 {
-    fn from_str_radix(src: &str, radix: usize) -> Option<i128> {
+    type Err = ParseIntError;
+
+    fn from_str_radix(src: &str, radix: usize) -> Result<i128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
@@ -823,22 +828,37 @@ impl FromStrRadix for i128 {
         let (is_negative, src) = match src.slice_shift_char() {
             Some(('-', rest)) => (true, rest),
             Some(_) => (false, src),
-            None => return None,
+            None => return Err(error::EMPTY.clone()),
         };
 
-        FromStrRadix::from_str_radix(src, radix).and_then(|res: u128| {
-            let res = i128(if is_negative { -res } else { res });
-            if res != ZERO && res.is_negative() != is_negative {
-                None
-            } else {
-                Some(res)
-            }
-        })
+        match <u128 as FromStrRadix>::from_str_radix(src, radix) {
+            Ok(res) => {
+                let res = i128(if is_negative { -res } else { res });
+                if res != ZERO && res.is_negative() != is_negative {
+                    Err(if is_negative {
+                        error::UNDERFLOW.clone()
+                    } else {
+                        error::OVERFLOW.clone()
+                    })
+                } else {
+                    Ok(res)
+                }
+            },
+            Err(e) => {
+                if is_negative && e == *error::OVERFLOW {
+                    Err(error::UNDERFLOW.clone())
+                } else {
+                    Err(e)
+                }
+            },
+        }
     }
 }
 
 impl FromStr for i128 {
-    fn from_str(src: &str) -> Option<i128> {
+    type Err = ParseIntError;
+
+    fn from_str(src: &str) -> Result<i128, ParseIntError> {
         FromStrRadix::from_str_radix(src, 10)
     }
 }
@@ -847,6 +867,7 @@ impl FromStr for i128 {
 mod from_str_tests {
     use i128::{i128, ZERO, ONE, MIN, MAX};
     use std::num::FromStrRadix;
+    use error;
 
     #[test]
     fn test_from_str_radix() {
@@ -890,21 +911,21 @@ mod from_str_tests {
 
         let neg = i128::from_parts(-7620305690708017834, 34929685051752008);
         for (base2, res) in NEG_TEST_RESULTS.iter().enumerate() {
-            assert_eq!(Some(neg), FromStrRadix::from_str_radix(*res, base2+2));
-            assert_eq!(Some(-neg), FromStrRadix::from_str_radix(&res[1..], base2+2));
+            assert_eq!(Ok(neg), FromStrRadix::from_str_radix(*res, base2+2));
+            assert_eq!(Ok(-neg), FromStrRadix::from_str_radix(&res[1..], base2+2));
         }
 
-        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0", 2));
-        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("-0", 2));
-        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
-        assert_eq!(None::<i128>, FromStrRadix::from_str_radix("123", 3));
-        assert_eq!(Some(-ONE), FromStrRadix::from_str_radix("-1", 10));
-        assert_eq!(None::<i128>, FromStrRadix::from_str_radix("~1", 10));
-        assert_eq!(None::<i128>, FromStrRadix::from_str_radix("", 10));
-        assert_eq!(Some(MAX), FromStrRadix::from_str_radix("7ksyyizzkutudzbv8aqztecjj", 36));
-        assert_eq!(Some(MIN), FromStrRadix::from_str_radix("-7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(None::<i128>, FromStrRadix::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(None::<i128>, FromStrRadix::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
+        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0", 2));
+        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("-0", 2));
+        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), <i128 as FromStrRadix>::from_str_radix("123", 3));
+        assert_eq!(Ok(-ONE), FromStrRadix::from_str_radix("-1", 10));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), <i128 as FromStrRadix>::from_str_radix("~1", 10));
+        assert_eq!(Err(error::EMPTY.clone()), <i128 as FromStrRadix>::from_str_radix("", 10));
+        assert_eq!(Ok(MAX), FromStrRadix::from_str_radix("7ksyyizzkutudzbv8aqztecjj", 36));
+        assert_eq!(Ok(MIN), FromStrRadix::from_str_radix("-7ksyyizzkutudzbv8aqztecjk", 36));
+        assert_eq!(Err(error::OVERFLOW.clone()), <i128 as FromStrRadix>::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
+        assert_eq!(Err(error::UNDERFLOW.clone()), <i128 as FromStrRadix>::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
     }
 }
 

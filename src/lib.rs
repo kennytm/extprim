@@ -1,6 +1,6 @@
 #![feature(asm)]
 #![feature(rustc_private, plugin_registrar, quote)]
-#![feature(test, rand, hash, core, unicode, collections)]
+#![feature(test, hash, core, unicode, collections)]
 
 //! This crate provides some extra simple types.
 //!
@@ -33,19 +33,14 @@
 //! ```
 //!
 
+extern crate core;
 extern crate test;
 extern crate syntax;
 extern crate rustc;
+#[macro_use]
+extern crate lazy_static;
 
-macro_rules! try_option {
-    ($e:expr) => (
-        match $e {
-            Some(e) => e,
-            None => return None,
-        }
-    );
-}
-
+mod error;
 pub mod u128;
 pub mod i128;
 mod compiler_rt;

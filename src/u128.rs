@@ -13,8 +13,11 @@ use std::any::TypeId;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use core::num::ParseIntError;
+
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
+use error;
 
 //{{{ Structure
 
@@ -44,7 +47,7 @@ pub const ZERO: u128 = MIN;
 pub const ONE: u128 = u128 { lo: 1, hi: 0 };
 
 /// An unsigned 128-bit number.
-#[derive(Default, Copy, Clone, Hash, PartialEq, Eq, Rand)]
+#[derive(Default, Copy, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
 #[unstable]
@@ -828,15 +831,14 @@ impl Int for u128 {
     }
 
     fn checked_mul(self, other: u128) -> Option<u128> {
-        let hi = try_option!( match (self.hi, other.hi) {
+        match (self.hi, other.hi) {
             (a, 0) => a.checked_mul(other.lo),
             (0, c) => c.checked_mul(self.lo),
             _ => None,
-        } );
-        let res = u64_long_mul(self.lo, other.lo);
-        let hi = try_option!(hi.checked_add(res.hi));
-
-        Some(u128 { hi: hi, lo: res.lo })
+        }.and_then(|hi| {
+            let res = u64_long_mul(self.lo, other.lo);
+            hi.checked_add(res.hi).map(|hi| u128 { hi: hi, lo: res.lo })
+        })
     }
 
     fn checked_div(self, other: u128) -> Option<u128> {
@@ -989,30 +991,35 @@ impl UnsignedInt for u128 {}
 //{{{ FromStr, FromStrRadix
 
 impl FromStrRadix for u128 {
-    fn from_str_radix(src: &str, radix: usize) -> Option<u128> {
+    type Err = ParseIntError;
+
+    fn from_str_radix(src: &str, radix: usize) -> Result<u128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
 
         if src.len() == 0 {
-            return None;
+            return Err(error::EMPTY.clone());
         }
 
         let mut result = ZERO;
         let radix128 = u128::new(radix as u64);
 
         for c in src.chars() {
-            let digit = try_option!(c.to_digit(radix));
-            let int_result = try_option!(result.checked_mul(radix128));
-            result = try_option!(int_result.checked_add(u128::new(digit as u64)));
+            let digit = try!(c.to_digit(radix).ok_or(error::INVALID_DIGIT.clone()));
+            let int_result = try!(result.checked_mul(radix128).ok_or(error::OVERFLOW.clone()));
+            let digit128 = u128::new(digit as u64);
+            result = try!(int_result.checked_add(digit128).ok_or(error::OVERFLOW.clone()));
         }
 
-        Some(result)
+        Ok(result)
     }
 }
 
 impl FromStr for u128 {
-    fn from_str(src: &str) -> Option<u128> {
+    type Err = ParseIntError;
+
+    fn from_str(src: &str) -> Result<u128, ParseIntError> {
         FromStrRadix::from_str_radix(src, 10)
     }
 }
@@ -1021,6 +1028,7 @@ impl FromStr for u128 {
 mod from_str_tests {
     use u128::{u128, MAX, ZERO};
     use std::num::FromStrRadix;
+    use error;
 
     #[test]
     fn test_from_str_radix() {
@@ -1065,17 +1073,17 @@ mod from_str_tests {
         let v = u128::from_parts(11210252820717990300, 9956704808456227925);
 
         for (base2, res) in TEST_RESULTS.iter().enumerate() {
-            assert_eq!(Some(v), FromStrRadix::from_str_radix(*res, base2+2));
+            assert_eq!(Ok(v), FromStrRadix::from_str_radix(*res, base2+2));
         }
 
-        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0", 2));
-        assert_eq!(Some(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
-        assert_eq!(None::<u128>, FromStrRadix::from_str_radix("123", 3));
-        assert_eq!(None::<u128>, FromStrRadix::from_str_radix("-1", 10));
-        assert_eq!(None::<u128>, FromStrRadix::from_str_radix("", 10));
-        assert_eq!(Some(MAX), FromStrRadix::from_str_radix("f5lxx1zz5pnorynqglhzmsp33", 36));
-        assert_eq!(None::<u128>, FromStrRadix::from_str_radix("f5lxx1zz5pnorynqglhzmsp34", 36));
-        assert_eq!(None::<u128>, FromStrRadix::from_str_radix("f5lxx1zz5pnorynqglhzmsp43", 36));
+        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0", 2));
+        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), <u128 as FromStrRadix>::from_str_radix("123", 3));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), <u128 as FromStrRadix>::from_str_radix("-1", 10));
+        assert_eq!(Err(error::EMPTY.clone()), <u128 as FromStrRadix>::from_str_radix("", 10));
+        assert_eq!(Ok(MAX), FromStrRadix::from_str_radix("f5lxx1zz5pnorynqglhzmsp33", 36));
+        assert_eq!(Err(error::OVERFLOW.clone()), <u128 as FromStrRadix>::from_str_radix("f5lxx1zz5pnorynqglhzmsp34", 36));
+        assert_eq!(Err(error::OVERFLOW.clone()), <u128 as FromStrRadix>::from_str_radix("f5lxx1zz5pnorynqglhzmsp43", 36));
     }
 }
 
