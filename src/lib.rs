@@ -23,7 +23,9 @@
 //! ```
 //! #![feature(plugin)]
 //!
-//! #[plugin] extern crate extprim;
+//! #![plugin(extprim)]
+//!
+//! extern crate extprim;
 //! use extprim::i128::i128;
 //!
 //! const SOME_BIG_VALUE: i128 = i128!(-123_456_789_987_654_321_000);
