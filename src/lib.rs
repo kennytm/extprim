@@ -1,6 +1,6 @@
 #![feature(asm)]
 #![feature(rustc_private, plugin_registrar, quote)]
-#![feature(test, hash, core, unicode, collections)]
+#![feature(test, core, unicode, collections)]
 
 //! This crate provides some extra simple types.
 //!
@@ -25,6 +25,7 @@
 //!
 //! #![plugin(extprim)]
 //!
+//! #[allow(plugin_as_library)]
 //! extern crate extprim;
 //! use extprim::i128::i128;
 //!

@@ -820,7 +820,7 @@ impl SignedInt for i128 {
 impl FromStrRadix for i128 {
     type Err = ParseIntError;
 
-    fn from_str_radix(src: &str, radix: usize) -> Result<i128, ParseIntError> {
+    fn from_str_radix(src: &str, radix: u32) -> Result<i128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
@@ -911,8 +911,9 @@ mod from_str_tests {
 
         let neg = i128::from_parts(-7620305690708017834, 34929685051752008);
         for (base2, res) in NEG_TEST_RESULTS.iter().enumerate() {
-            assert_eq!(Ok(neg), FromStrRadix::from_str_radix(*res, base2+2));
-            assert_eq!(Ok(-neg), FromStrRadix::from_str_radix(&res[1..], base2+2));
+            let base = (base2 + 2) as u32;
+            assert_eq!(Ok(neg), FromStrRadix::from_str_radix(*res, base));
+            assert_eq!(Ok(-neg), FromStrRadix::from_str_radix(&res[1..], base));
         }
 
         assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0", 2));

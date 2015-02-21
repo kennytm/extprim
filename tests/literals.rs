@@ -2,6 +2,7 @@
 
 #![plugin(extprim)]
 
+#[allow(plugin_as_library)]
 extern crate extprim;
 
 use extprim::u128::u128;

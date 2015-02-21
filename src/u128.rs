@@ -993,7 +993,7 @@ impl UnsignedInt for u128 {}
 impl FromStrRadix for u128 {
     type Err = ParseIntError;
 
-    fn from_str_radix(src: &str, radix: usize) -> Result<u128, ParseIntError> {
+    fn from_str_radix(src: &str, radix: u32) -> Result<u128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
@@ -1073,7 +1073,7 @@ mod from_str_tests {
         let v = u128::from_parts(11210252820717990300, 9956704808456227925);
 
         for (base2, res) in TEST_RESULTS.iter().enumerate() {
-            assert_eq!(Ok(v), FromStrRadix::from_str_radix(*res, base2+2));
+            assert_eq!(Ok(v), FromStrRadix::from_str_radix(*res, (base2+2) as u32));
         }
 
         assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0", 2));
