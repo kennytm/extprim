@@ -9,7 +9,7 @@ use syntax::parse::token::Token::{Literal, BinOp};
 use syntax::parse::token::BinOpToken::{Minus, Plus};
 use syntax::parse::token::Lit::Integer;
 use syntax::codemap::Span;
-use syntax::ext::base::{ExtCtxt, MacResult, MacExpr, DummyResult};
+use syntax::ext::base::{ExtCtxt, MacResult, MacEager, DummyResult};
 
 use rustc::plugin::Registry;
 
@@ -22,7 +22,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 
 /// Translate `u128!(1234567…)` to `u128 { lo: …, hi: … }`
-fn create_u128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
+fn create_u128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult> {
     let res: Result<u128, &str> = match tts {
         [TtToken(_, Literal(Integer(number), _))] => {
             let number_str = number.as_str();
@@ -38,7 +38,7 @@ fn create_u128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult +
         Ok(number) => {
             let hi = number.hi;
             let lo = number.lo;
-            MacExpr::new(quote_expr!(cx,
+            MacEager::expr(quote_expr!(cx,
                 ::extprim::u128::u128 { lo: $lo, hi: $hi }
             ))
         }
@@ -49,7 +49,7 @@ fn create_u128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult +
     }
 }
 
-fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
+fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult> {
     let res = match tts {
         [TtToken(_, BinOp(Minus)), TtToken(_, Literal(Integer(number), _))] =>
             Ok(from_literal(number.as_str(), true)),
@@ -65,7 +65,7 @@ fn create_i128(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult +
             Some(number) => {
                 let hi = number.0.hi;
                 let lo = number.0.lo;
-                Ok(MacExpr::new(quote_expr!(cx,
+                Ok(MacEager::expr(quote_expr!(cx,
                     ::extprim::i128::i128(::extprim::u128::u128 { lo: $lo, hi: $hi })
                 )))
             }
