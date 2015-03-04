@@ -13,6 +13,8 @@ use std::any::TypeId;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use rand::{Rand, Rng};
+
 use core::num::ParseIntError;
 
 use i128::i128;
@@ -98,6 +100,17 @@ impl u128 {
     /// Convert this number to signed without checking.
     pub fn as_i128(self) -> i128 {
         i128::from_parts(self.hi as i64, self.lo)
+    }
+}
+
+//}}}
+
+//{{{ Rand
+
+impl Rand for u128 {
+    fn rand<R: Rng>(rng: &mut R) -> u128 {
+        let (lo, hi) = rng.gen();
+        u128::from_parts(lo, hi)
     }
 }
 

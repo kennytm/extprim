@@ -9,6 +9,9 @@ use std::any::TypeId;
 use std::fmt;
 use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
 use std::cmp::{PartialOrd, Ord, Ordering};
+
+use rand::{Rand, Rng};
+
 use core::num::ParseIntError;
 
 #[cfg(not(target_arch="x86_64"))]
@@ -103,6 +106,16 @@ mod structure_tests {
         assert_eq!(i128::from_parts(0, 66), i128::new(66));
         assert_eq!(i128::from_parts(-1, !65), i128::new(-66));
         assert_eq!(i128::from_parts(-1, 0x8000000000000000), i128::new(i64::MIN));
+    }
+}
+
+//}}}
+
+//{{{ Rand
+
+impl Rand for i128 {
+    fn rand<R: Rng>(rng: &mut R) -> i128 {
+        i128(u128::rand(rng))
     }
 }
 
