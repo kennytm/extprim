@@ -12,6 +12,8 @@ use std::any::TypeId;
 use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use rand::{Rand, Rng};
+
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 use error;
@@ -95,6 +97,17 @@ impl u128 {
     /// Convert this number to signed without checking.
     pub fn as_i128(self) -> i128 {
         i128::from_parts(self.hi as i64, self.lo)
+    }
+}
+
+//}}}
+
+//{{{ Rand
+
+impl Rand for u128 {
+    fn rand<R: Rng>(rng: &mut R) -> u128 {
+        let (lo, hi) = rng.gen();
+        u128::from_parts(lo, hi)
     }
 }
 

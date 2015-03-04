@@ -22,4 +22,4 @@ crate-type = ["dylib", "rlib"]
 
 [dependencies]
 lazy_static = "*"
-
+rand = "*"

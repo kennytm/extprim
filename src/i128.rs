@@ -11,6 +11,8 @@ use std::fmt;
 use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use rand::{Rand, Rng};
+
 use u128::u128;
 use error;
 
@@ -88,10 +90,6 @@ impl i128 {
     pub fn as_u128(self) -> u128 {
         self.0
     }
-
-    pub fn is_negative(&self) -> bool {
-        self.high64() < 0
-    }
 }
 
 #[cfg(test)]
@@ -104,6 +102,16 @@ mod structure_tests {
         assert_eq!(i128::from_parts(0, 66), i128::new(66));
         assert_eq!(i128::from_parts(-1, !65), i128::new(-66));
         assert_eq!(i128::from_parts(-1, 0x8000000000000000), i128::new(i64::MIN));
+    }
+}
+
+//}}}
+
+//{{{ Rand
+
+impl Rand for i128 {
+    fn rand<R: Rng>(rng: &mut R) -> i128 {
+        i128(u128::rand(rng))
     }
 }
 

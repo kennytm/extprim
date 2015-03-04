@@ -40,6 +40,7 @@ extern crate core;
 extern crate test;
 extern crate syntax;
 extern crate rustc;
+extern crate rand;
 #[macro_use]
 extern crate lazy_static;
 
