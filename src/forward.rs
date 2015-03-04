@@ -101,11 +101,25 @@ forward_checked!{impl Mul, mul for i128, i128 => i128 : overflowing_mul, wrappin
 
 forward_ref_binop!{impl Add, add for u128, u128}
 forward_ref_binop!{impl Sub, sub for u128, u128}
+forward_ref_binop!{impl Mul, mul for u128, u128}
+forward_ref_binop!{impl Div, div for u128, u128}
+forward_ref_binop!{impl Rem, rem for u128, u128}
 forward_ref_unop!{impl Neg, neg for u128}
 forward_ref_unop!{impl Not, not for u128}
 forward_ref_binop!{impl BitAnd, bitand for u128, u128}
 forward_ref_binop!{impl BitOr, bitor for u128, u128}
 forward_ref_binop!{impl BitXor, bitxor for u128, u128}
+
+forward_ref_binop!{impl Add, add for i128, i128}
+forward_ref_binop!{impl Sub, sub for i128, i128}
+forward_ref_binop!{impl Mul, mul for i128, i128}
+forward_ref_binop!{impl Div, div for i128, i128}
+forward_ref_binop!{impl Rem, rem for i128, i128}
+forward_ref_unop!{impl Neg, neg for i128}
+forward_ref_unop!{impl Not, not for i128}
+forward_ref_binop!{impl BitAnd, bitand for i128, i128}
+forward_ref_binop!{impl BitOr, bitor for i128, i128}
+forward_ref_binop!{impl BitXor, bitxor for i128, i128}
 
 forward_shift!{impl Shl, shl for u128, i8}
 forward_shift!{impl Shl, shl for u128, u8}
@@ -144,8 +158,6 @@ forward_shift!{impl Shr, shr for i128, u64}
 forward_shift!{impl Shr, shr for i128, isize}
 forward_shift!{impl Shr, shr for i128, usize}
 
-
-
 forward_ref_binop!{impl Shl, shl for u128, i8}
 forward_ref_binop!{impl Shl, shl for u128, u8}
 forward_ref_binop!{impl Shl, shl for u128, i16}
@@ -167,4 +179,27 @@ forward_ref_binop!{impl Shr, shr for u128, u64}
 forward_ref_binop!{impl Shr, shr for u128, isize}
 forward_ref_binop!{impl Shr, shr for u128, usize}
 
+forward_ref_binop!{impl Shl, shl for u128, u128}
+forward_ref_binop!{impl Shr, shr for u128, u128}
+
+forward_ref_binop!{impl Shl, shl for i128, i8}
+forward_ref_binop!{impl Shl, shl for i128, u8}
+forward_ref_binop!{impl Shl, shl for i128, i16}
+forward_ref_binop!{impl Shl, shl for i128, u16}
+forward_ref_binop!{impl Shl, shl for i128, i32}
+forward_ref_binop!{impl Shl, shl for i128, u32}
+forward_ref_binop!{impl Shl, shl for i128, i64}
+forward_ref_binop!{impl Shl, shl for i128, u64}
+forward_ref_binop!{impl Shl, shl for i128, isize}
+forward_ref_binop!{impl Shl, shl for i128, usize}
+forward_ref_binop!{impl Shr, shr for i128, i8}
+forward_ref_binop!{impl Shr, shr for i128, u8}
+forward_ref_binop!{impl Shr, shr for i128, i16}
+forward_ref_binop!{impl Shr, shr for i128, u16}
+forward_ref_binop!{impl Shr, shr for i128, i32}
+forward_ref_binop!{impl Shr, shr for i128, u32}
+forward_ref_binop!{impl Shr, shr for i128, i64}
+forward_ref_binop!{impl Shr, shr for i128, u64}
+forward_ref_binop!{impl Shr, shr for i128, isize}
+forward_ref_binop!{impl Shr, shr for i128, usize}
 
