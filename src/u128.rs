@@ -369,6 +369,54 @@ impl Shr<u32> for u128 {
     }
 }
 
+impl Shl<u128> for u128 {
+    type Output = u128;
+
+    fn shl(self, shift: u128) -> u128 {
+        let lo = self.lo;
+        let hi = self.hi;
+        if shift.hi != 0 {
+            return ZERO;
+        }
+
+        let (lo, hi) = if (shift.lo & 64) != 0 {
+            (0, lo << (shift.lo & 63))
+        } else {
+            (lo << shift.lo, if shift.lo == 0 {
+                hi << shift.lo
+            } else {
+                hi << shift.lo | lo >> (64 - shift.lo)
+            })
+        };
+
+        u128::from_parts(hi, lo)
+    }
+}
+
+impl Shr<u128> for u128 {
+    type Output = u128;
+
+    fn shr(self, shift: u128) -> u128 {
+        let lo = self.lo;
+        let hi = self.hi;
+        if shift.hi != 0 {
+            return ZERO;
+        }
+
+        let (hi, lo) = if (shift.lo & 64) != 0 {
+            (0, hi >> (shift.lo & 63))
+        } else {
+            (hi >> shift.lo, if shift.lo == 0 {
+                lo >> shift.lo
+            } else {
+                lo >> shift.lo | hi << (64 - shift.lo)
+            })
+        };
+
+        u128::from_parts(hi, lo)
+    }
+}
+
 #[cfg(test)]
 mod shift_tests {
     use u128::u128;
@@ -392,6 +440,27 @@ mod shift_tests {
         65, 103, 88, 121, 105, 98, 82, 89, 30, 37, 64, 68, 41, 93, 57, 105, 100,
         108, 102, 44, 17, 61, 72, 33, 126, 73, 105, 0, 119, 97, 28, 9, 101, 44,
     ];
+    macro_rules! u128map {
+        ([$( $x:expr),* ]) => {
+            &[$(u128{lo:!($x),hi:0}, )*]
+        }
+    }
+    const BENCH_SHIFTS_U128: &'static [u128] = u128map!([
+        77, 45, 57, 7, 34, 75, 38, 89, 89, 66, 16, 111, 66, 123, 14, 80, 94, 43,
+        46, 86, 121, 31, 123, 33, 23, 57, 50, 28, 26, 46, 8, 88, 74, 55, 108,
+        127, 1, 70, 73, 2, 1, 45, 36, 96, 124, 124, 91, 63, 25, 94, 8, 68, 41,
+        127, 107, 10, 111, 98, 97, 72, 78, 10, 125, 17, 62, 3, 65, 67, 13, 41,
+        68, 109, 23, 100, 98, 16, 78, 13, 0, 63, 107, 64, 13, 23, 69, 73, 2, 38,
+        16, 9, 124, 120, 39, 119, 3, 15, 25, 11, 84, 102, 69, 58, 39, 116, 66,
+        87, 111, 17, 11, 29, 35, 123, 23, 38, 43, 85, 32, 7, 34, 84, 27, 35,
+        122, 64, 33, 83, 78, 105, 31, 5, 58, 25, 21, 34, 15, 94, 10, 23, 48, 89,
+        23, 99, 110, 105, 32, 7, 116, 31, 10, 14, 22, 84, 40, 57, 7, 35, 8, 95,
+        121, 66, 95, 103, 26, 62, 24, 36, 48, 58, 122, 66, 37, 56, 35, 87, 36,
+        41, 75, 37, 25, 40, 60, 39, 94, 18, 33, 113, 34, 66, 34, 34, 88, 95, 81,
+        115, 10, 67, 33, 34, 23, 53, 10, 119, 54, 107, 37, 17, 85, 42, 83, 85,
+        102, 104, 94, 24, 97, 104, 93, 9, 95, 75, 41, 112, 64, 63, 72, 3, 26,
+        65, 103, 88, 121, 105, 98, 82, 89, 30, 37, 64, 68, 41, 93, 57, 105, 100,
+        108, 102, 44, 17, 61, 72, 33, 126, 73, 105, 0, 119, 97, 28, 9, 101, 44]);
 
     #[test]
     fn test_shl() {
@@ -403,7 +472,6 @@ mod shift_tests {
                     u128::from_parts(0x53f09dac5b28f152, 0x0));
         assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << 120,
                     u128::from_parts(0x5200000000000000, 0x0));
-
 
         assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << 0,
                     u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd));
@@ -436,6 +504,56 @@ mod shift_tests {
                     u128::from_parts(0x0, 0xf8));
     }
 
+    #[test]
+    fn test_shl_u128() {
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << u128::new(0),
+                    u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << u128::new(1),
+                    u128::from_parts(0x3cb8f00361caebee, 0xa7e13b58b651e2a4));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << u128::new(64),
+                    u128::from_parts(0x53f09dac5b28f152, 0x0));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << u128::new(120),
+                    u128::from_parts(0x5200000000000000, 0x0));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << u128::from_parts(1, 0),
+                    u128::from_parts(0x0, 0x0));
+
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << u128::new(0),
+                    u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << u128::new(1),
+                    u128::from_parts(0xf004a6c7bb9aa3b0, 0xa13af1c94601179a));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << u128::new(64),
+                    u128::from_parts(0x509d78e4a3008bcd, 0x0));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << u128::new(120),
+                    u128::from_parts(0xcd00000000000000, 0x0));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) << u128::from_parts(1, 0),
+                    u128::from_parts(0x0, 0x0));
+    }
+
+    #[test]
+    fn test_shr_u128() {
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> u128::new(0),
+                    u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> u128::new(1),
+                    u128::from_parts(0xf2e3c00d872bafb, 0xa9f84ed62d9478a9));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> u128::new(64),
+                    u128::from_parts(0x0, 0x1e5c7801b0e575f7));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> u128::new(120),
+                    u128::from_parts(0x0, 0x1e));
+        assert_eq!(u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> u128::from_parts(1, 0),
+                    u128::from_parts(0x0, 0x0));
+
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> u128::new(0),
+                    u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> u128::new(1),
+                    u128::from_parts(0x7c0129b1eee6a8ec, 0x284ebc72518045e6));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> u128::new(64),
+                    u128::from_parts(0x0, 0xf8025363ddcd51d8));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> u128::new(120),
+                    u128::from_parts(0x0, 0xf8));
+        assert_eq!(u128::from_parts(0xf8025363ddcd51d8, 0x509d78e4a3008bcd) >> u128::from_parts(1, 0),
+                    u128::from_parts(0x0, 0x0));
+    }
+
     #[bench]
     fn bench_shl(bencher: &mut Bencher) {
         let number = u128::from_parts(9741918172058430398, 3937562729638942691);
@@ -451,6 +569,26 @@ mod shift_tests {
         let number = u128::from_parts(9741918172058430398, 3937562729638942691);
         bencher.iter(|| {
             for i in BENCH_SHIFTS.iter() {
+                black_box(number >> *i);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_shl_u128(bencher: &mut Bencher) {
+        let number = u128::from_parts(9741918172058430398, 3937562729638942691);
+        bencher.iter(|| {
+            for i in BENCH_SHIFTS_U128.iter() {
+                black_box(number << *i);
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_shr_u128(bencher: &mut Bencher) {
+        let number = u128::from_parts(9741918172058430398, 3937562729638942691);
+        bencher.iter(|| {
+            for i in BENCH_SHIFTS_U128.iter() {
                 black_box(number >> *i);
             }
         });
@@ -979,7 +1117,6 @@ impl Int for u128 {
         }
     }
 }
-
 
 #[cfg(test)]
 mod int_tests {
