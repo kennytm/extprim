@@ -2,18 +2,15 @@
 
 //! Unsigned 128-bit integer.
 
-use std::intrinsics::{u64_add_with_overflow, u64_sub_with_overflow};
 use std::fmt;
-use std::num::{NumCast, Int, UnsignedInt, SignedInt, FromStrRadix,
-               FromPrimitive, ToPrimitive};
+use std::num::*;
+use std::num::wrapping::{WrappingOps, OverflowingOps};
 use std::u64;
 use std::str::FromStr;
 use std::mem::transmute_copy;
 use std::any::TypeId;
-use std::ops::{Add, Sub, Mul, Div, Rem, BitAnd, BitOr, BitXor, Shl, Shr, Neg, Not};
+use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
-
-use core::num::ParseIntError;
 
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
@@ -105,44 +102,83 @@ impl u128 {
 
 //{{{ Add, Sub
 
-impl Add for u128 {
-    type Output = u128;
-    #[inline(always)]
-    fn add(self, other: u128) -> u128 {
-        let (new_lo, carry) = unsafe { u64_add_with_overflow(self.lo, other.lo) };
-        let new_hi = self.hi + other.hi + if carry { 1 } else { 0 };
-        u128::from_parts(new_hi, new_lo)
-    }
+fn wrapping_add(left: u128, right: u128) -> u128 {
+    let (lo, carry) = left.lo.overflowing_add(right.lo);
+    let hi = left.hi.wrapping_add(right.hi);
+    let hi = hi.wrapping_add(if carry { 1 } else { 0 });
+    u128::from_parts(hi, lo)
 }
 
-impl Sub for u128 {
-    type Output = u128;
-    #[inline(always)]
-    fn sub(self, other: u128) -> u128 {
-        let (new_lo, borrow) = unsafe { u64_sub_with_overflow(self.lo, other.lo) };
-        let new_hi = self.hi - other.hi - if borrow { 1 } else { 0 };
-        u128::from_parts(new_hi, new_lo)
-    }
+fn wrapping_sub(left: u128, right: u128) -> u128 {
+    let (lo, borrow) = left.lo.overflowing_sub(right.lo);
+    let hi = left.hi.wrapping_sub(right.hi);
+    let hi = hi.wrapping_sub(if borrow { 1 } else { 0 });
+    u128::from_parts(hi, lo)
+}
+
+fn overflowing_add(left: u128, right: u128) -> (u128, bool) {
+    let (lo, lo_carry) = left.lo.overflowing_add(right.lo);
+    let (hi, hi_carry_1) = left.hi.overflowing_add(if lo_carry { 1 } else { 0 });
+    let (hi, hi_carry_2) = hi.overflowing_add(right.hi);
+    (u128::from_parts(hi, lo), hi_carry_1 || hi_carry_2)
+}
+
+fn overflowing_sub(left: u128, right: u128) -> (u128, bool) {
+    let (lo, lo_borrow) = left.lo.overflowing_sub(right.lo);
+    let (hi, hi_borrow_1) = left.hi.overflowing_sub(if lo_borrow { 1 } else { 0 });
+    let (hi, hi_borrow_2) = hi.overflowing_sub(right.hi);
+    (u128::from_parts(hi, lo), hi_borrow_1 || hi_borrow_2)
 }
 
 impl Neg for u128 {
     type Output = u128;
+
     fn neg(self) -> u128 {
-        !self + ONE
+        ONE.wrapping_add(!self)
     }
 }
 
 #[cfg(test)]
 mod add_sub_tests {
-    use u128::{u128, ONE, MAX};
+    use u128::{u128, ZERO, ONE, MAX};
+    use std::num::wrapping::{OverflowingOps, WrappingOps};
 
     #[test]
     fn test_add() {
         assert_eq!(u128::from_parts(23, 12) + u128::from_parts(78, 45),
                     u128::from_parts(101, 57));
-        assert_eq!(u128::from_parts(0xfeae4b298df991ae, 0x21b6c7c3766908a7) +
-                    u128::from_parts(0x08a45eef16781327, 0xff1049ddf49ff8a8),
-                    u128::from_parts(0x0752aa18a471a4d6, 0x20c711a16b09014f));
+        assert_eq!(u128::from_parts(0x4968eca20d32da8d, 0xaf40c0e1a806fa23) +
+                    u128::from_parts(0x71b6119ef76e4fe3, 0x0f58496c74669747),
+                    u128::from_parts(0xbb1efe4104a12a70, 0xbe990a4e1c6d916a));
+        assert_eq!(u128::from_parts(1, 0xffffffff_ffffffff) + u128::from_parts(0, 1),
+                    u128::from_parts(2, 0));
+    }
+
+    #[test]
+    fn test_wrapping_overflowing_add() {
+        let a = u128::from_parts(0xfeae4b298df991ae, 0x21b6c7c3766908a7);
+        let b = u128::from_parts(0x08a45eef16781327, 0xff1049ddf49ff8a8);
+        let c = u128::from_parts(0x0752aa18a471a4d6, 0x20c711a16b09014f);
+        assert_eq!(a.wrapping_add(b), c);
+        assert_eq!(a.overflowing_add(b), (c, true));
+
+        assert_eq!(ONE.wrapping_add(ONE), u128::new(2));
+        assert_eq!(ONE.overflowing_add(ONE), (u128::new(2), false));
+
+        assert_eq!(MAX.wrapping_add(ONE), ZERO);
+        assert_eq!(MAX.overflowing_add(ONE), (ZERO, true));
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_add_overflow_without_carry() {
+        u128::from_parts(0x80000000_00000000, 0) + u128::from_parts(0x80000000_00000000, 0);
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_add_overflow_with_carry() {
+        MAX + ONE;
     }
 
     #[test]
@@ -152,15 +188,34 @@ mod add_sub_tests {
         assert_eq!(u128::from_parts(0xfeae4b298df991ae, 0x21b6c7c3766908a7) -
                     u128::from_parts(0x08a45eef16781327, 0xff1049ddf49ff8a8),
                     u128::from_parts(0xf609ec3a77817e86, 0x22a67de581c90fff));
-        assert_eq!(u128::from_parts(3565142335064920496, 15687467940602204387) -
-                    u128::from_parts(4442421226426414073, 17275749316209243331),
-                    u128::from_parts(17569465182348058038, 16858462698102512672));
+    }
+
+    #[test]
+    fn test_wrapping_overflowing_sub() {
+        let a = u128::from_parts(3565142335064920496, 15687467940602204387);
+        let b = u128::from_parts(4442421226426414073, 17275749316209243331);
+        let c = u128::from_parts(17569465182348058038, 16858462698102512672);
+        assert_eq!(a.wrapping_sub(b), c);
+        assert_eq!(a.overflowing_sub(b), (c, true));
+
+        assert_eq!(ONE.wrapping_sub(ONE), ZERO);
+        assert_eq!(ONE.overflowing_sub(ONE), (ZERO, false));
+
+        assert_eq!(ZERO.wrapping_sub(ONE), MAX);
+        assert_eq!(ZERO.overflowing_sub(ONE), (MAX, true));
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_sub_overflow() {
+        ZERO - ONE;
     }
 
     #[test]
     fn test_neg() {
         assert_eq!(MAX, -ONE);
         assert_eq!(ONE, -MAX);
+        assert_eq!(ZERO, -ZERO);
     }
 }
 
@@ -169,14 +224,12 @@ mod add_sub_tests {
 //{{{ PartialOrd, Ord
 
 impl PartialOrd for u128 {
-    #[inline(always)]
     fn partial_cmp(&self, other: &u128) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for u128 {
-    #[inline(always)]
     fn cmp(&self, other: &u128) -> Ordering {
         (self.hi, self.lo).cmp(&(other.hi, other.lo))
     }
@@ -184,12 +237,12 @@ impl Ord for u128 {
 
 #[cfg(test)]
 mod cmp_tests {
-    use u128::{u128, MAX};
+    use u128::{u128, MAX, ZERO, ONE};
 
     #[test]
     fn test_ord() {
-        let a = u128::new(0);
-        let b = u128::new(1);
+        let a = ZERO;
+        let b = ONE;
         let c = u128::from_parts(1, 0);
         let d = MAX;
 
@@ -208,7 +261,7 @@ mod cmp_tests {
 
 impl Not for u128 {
     type Output = u128;
-    #[inline(always)]
+
     fn not(self) -> u128 {
         u128 { lo: !self.lo, hi: !self.hi }
     }
@@ -216,7 +269,7 @@ impl Not for u128 {
 
 impl BitAnd for u128 {
     type Output = u128;
-    #[inline(always)]
+
     fn bitand(self, other: u128) -> u128 {
         u128 { lo: self.lo & other.lo, hi: self.hi & other.hi }
     }
@@ -224,7 +277,7 @@ impl BitAnd for u128 {
 
 impl BitOr for u128 {
     type Output = u128;
-    #[inline(always)]
+
     fn bitor(self, other: u128) -> u128 {
         u128 { lo: self.lo | other.lo, hi: self.hi | other.hi }
     }
@@ -232,7 +285,7 @@ impl BitOr for u128 {
 
 impl BitXor for u128 {
     type Output = u128;
-    #[inline(always)]
+
     fn bitxor(self, other: u128) -> u128 {
         u128 { lo: self.lo ^ other.lo, hi: self.hi ^ other.hi }
     }
@@ -274,10 +327,10 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<usize> for u128 {
+impl Shl<u32> for u128 {
     type Output = u128;
 
-    fn shl(self, shift: usize) -> u128 {
+    fn shl(self, shift: u32) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
 
@@ -287,7 +340,7 @@ impl Shl<usize> for u128 {
             (lo << shift, if shift == 0 {
                 hi << shift
             } else {
-                hi << shift | lo >> (64 - shift)
+                hi << shift | lo >> 64.wrapping_sub(shift)
             })
         };
 
@@ -295,10 +348,10 @@ impl Shl<usize> for u128 {
     }
 }
 
-impl Shr<usize> for u128 {
+impl Shr<u32> for u128 {
     type Output = u128;
 
-    fn shr(self, shift: usize) -> u128 {
+    fn shr(self, shift: u32) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
 
@@ -308,7 +361,7 @@ impl Shr<usize> for u128 {
             (hi >> shift, if shift == 0 {
                 lo >> shift
             } else {
-                lo >> shift | hi << (64 - shift)
+                lo >> shift | hi << 64.wrapping_sub(shift)
             })
         };
 
@@ -417,11 +470,11 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
     let c = right >> 32;
     let d = right & 0xffffffff;
 
-    let lo = b * d;
-    let (mid, carry) = unsafe { u64_add_with_overflow(a * d, b * c) };
-    let hi = a * c + if carry { 1 << 32 } else { 0 };
+    let lo = b.wrapping_mul(d);
+    let (mid, carry) = a.wrapping_mul(d).overflowing_add(b.wrapping_mul(c));
+    let hi = a.wrapping_mul(c).wrapping_add(if carry { 1 << 32 } else { 0 });
 
-    u128::from_parts(hi, lo) + u128::from_parts(mid >> 32, mid << 32)
+    u128::from_parts(hi, lo).wrapping_add(u128::from_parts(mid >> 32, mid << 32))
 }
 
 #[cfg(target_arch="x86_64")]
@@ -441,18 +494,35 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
     }
 }
 
-impl Mul for u128 {
-    type Output = u128;
+fn wrapping_mul(left: u128, right: u128) -> u128 {
+    let a = left.hi;
+    let b = left.lo;
+    let c = right.hi;
+    let d = right.lo;
+    let mut low = u64_long_mul(b, d);
+    let ad = a.wrapping_mul(d);
+    let bc = b.wrapping_mul(c);
+    low.hi = low.hi.wrapping_add(ad).wrapping_add(bc);
+    low
+}
 
-    fn mul(self, other: u128) -> u128 {
-        let a = self.hi;
-        let b = self.lo;
-        let c = other.hi;
-        let d = other.lo;
-        let mut low = u64_long_mul(b, d);
-        low.hi += a * d + b * c;
-        low
-    }
+fn overflowing_mul(left: u128, right: u128) -> (u128, bool) {
+    let a = left.hi;
+    let b = left.lo;
+    let c = right.hi;
+    let d = right.lo;
+
+    let (hi, hi_overflow_mul) = match (a, c) {
+        (a, 0) => a.overflowing_mul(d),
+        (0, c) => c.overflowing_mul(b),
+        (a, c) => (a.wrapping_mul(d).wrapping_add(c.wrapping_mul(b)), true),
+    };
+
+    let mut low = u64_long_mul(b, d);
+    let (hi, hi_overflow_add) = low.hi.overflowing_add(hi);
+    low.hi = hi;
+
+    (low, hi_overflow_mul || hi_overflow_add)
 }
 
 impl Mul<u64> for u128 {
@@ -465,11 +535,20 @@ impl Mul<u64> for u128 {
     }
 }
 
+impl Mul<u128> for u64 {
+    type Output = u128;
+
+    fn mul(self, other: u128) -> u128 {
+        other * self
+    }
+}
+
 #[cfg(test)]
 mod mul_tests {
     use std::u64;
-    use u128::{u128, u64_long_mul};
+    use u128::{u128, u64_long_mul, ZERO, ONE, MAX};
     use test::{Bencher, black_box};
+    use std::num::wrapping::{WrappingOps, OverflowingOps};
 
     const BENCH_LONG_MUL: &'static [u64] = &[
         11738324199100816218, 3625949024665125869, 11861868675607089770, 0,
@@ -515,19 +594,74 @@ mod mul_tests {
     fn test_mul() {
         assert_eq!(u128::new(6263979403966582069) * u128::new(2263184174907185431),
                     u128::from_parts(0xaaa4d56f5b2f577, 0x916fb81166049cc3));
-        assert_eq!(u128::from_parts(0xc1b27561c3e63bad, 0x53b0ad364ee597dc) *
-                    u128::from_parts(0x50f5d9a72dd704f3, 0x5ecee7a38577df37),
-                    u128::from_parts(0xf5651b2427082a5e, 0x0052af17d5e04444));
-        assert_eq!(u128::new(1) * u128::new(1), u128::new(1));
+        assert_eq!(u128::from_parts(47984616521, 3126587552720577884) * u128::new(323057793),
+                    u128::from_parts(15501804311280354074, 13195922651658531676));
+        assert_eq!(ONE * ONE, ONE);
+        assert_eq!(ZERO * ONE, ZERO);
+        assert_eq!(ZERO * ZERO, ZERO);
+        assert_eq!(MAX * ONE, MAX);
+        assert_eq!(MAX * ZERO, ZERO);
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_mul_overflow_10_10() {
+        u128::from_parts(1, 0) * u128::from_parts(1, 0);
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_mul_overflow_80_80() {
+        u128::from_parts(0x80000000_00000000, 0) * u128::from_parts(0x80000000_00000000, 0);
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_mul_overflow_max_max() {
+        MAX * MAX;
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_mul_overflow_max_2() {
+        MAX * u128::new(2);
     }
 
     #[test]
     fn test_mul_64() {
         assert_eq!(u128::new(6263979403966582069) * 2263184174907185431u64,
                     u128::from_parts(0xaaa4d56f5b2f577, 0x916fb81166049cc3));
-        assert_eq!(u128::from_parts(15266745824950921091, 7823906177946456204) *
-                    8527117857836076447,
-                    u128::from_parts(15018621813448572278, 1743241062838166260));
+        assert_eq!(u128::from_parts(47984616521, 3126587552720577884) * 323057793u64,
+                    u128::from_parts(15501804311280354074, 13195922651658531676));
+    }
+
+    #[test]
+    #[should_fail(expected="arithmetic operation overflowed")]
+    fn test_mul_64_overflow_max_2() {
+        MAX * 2u64;
+    }
+
+
+    #[test]
+    fn test_wrapping_overflowing_mul() {
+        let a = u128::from_parts(0xc1b27561c3e63bad, 0x53b0ad364ee597dc);
+        let b = u128::from_parts(0x50f5d9a72dd704f3, 0x5ecee7a38577df37);
+        let c = u128::from_parts(0xf5651b2427082a5e, 0x0052af17d5e04444);
+        assert_eq!(a.wrapping_mul(b), c);
+        assert_eq!(a.overflowing_mul(b), (c, true));
+
+        let a = u128::from_parts(15266745824950921091, 7823906177946456204);
+        let b = u128::new(8527117857836076447);
+        let c = u128::from_parts(15018621813448572278, 1743241062838166260);
+        assert_eq!(a.wrapping_mul(b), c);
+        assert_eq!(a.overflowing_mul(b), (c, true));
+        assert_eq!(b.wrapping_mul(a), c);
+        assert_eq!(b.overflowing_mul(a), (c, true));
+
+        assert_eq!(ONE.wrapping_mul(ONE), ONE);
+        assert_eq!(ONE.overflowing_mul(ONE), (ONE, false));
+        assert_eq!(MAX.wrapping_mul(ONE), MAX);
+        assert_eq!(MAX.overflowing_mul(ONE), (MAX, false));
     }
 
     #[bench]
@@ -563,8 +697,6 @@ mod mul_tests {
         });
     }
 }
-
-
 
 //}}}
 
@@ -659,6 +791,33 @@ mod div_rem_tests {
 
 }
 
+//}}}
+
+//{{{ WrappingOps & OverflowingOps
+
+impl WrappingOps for u128 {
+    fn wrapping_add(self, other: u128) -> u128 {
+        wrapping_add(self, other)
+    }
+    fn wrapping_sub(self, other: u128) -> u128 {
+        wrapping_sub(self, other)
+    }
+    fn wrapping_mul(self, other: u128) -> u128 {
+        wrapping_mul(self, other)
+    }
+}
+
+impl OverflowingOps for u128 {
+    fn overflowing_add(self, other: u128) -> (u128, bool) {
+        overflowing_add(self, other)
+    }
+    fn overflowing_sub(self, other: u128) -> (u128, bool) {
+        overflowing_sub(self, other)
+    }
+    fn overflowing_mul(self, other: u128) -> (u128, bool) {
+        overflowing_mul(self, other)
+    }
+}
 
 //}}}
 
@@ -733,7 +892,6 @@ mod num_cast_tests {
     }
 }
 
-
 //}}}
 
 //{{{ Int
@@ -744,11 +902,11 @@ impl Int for u128 {
     fn min_value() -> u128 { MIN }
     fn max_value() -> u128 { MAX }
 
-    fn count_ones(self) -> usize {
+    fn count_ones(self) -> u32 {
         self.lo.count_ones() + self.hi.count_ones()
     }
 
-    fn leading_zeros(self) -> usize {
+    fn leading_zeros(self) -> u32 {
         if self.hi == 0 {
             64 + self.lo.leading_zeros()
         } else {
@@ -756,7 +914,7 @@ impl Int for u128 {
         }
     }
 
-    fn trailing_zeros(self) -> usize {
+    fn trailing_zeros(self) -> u32 {
         if self.lo == 0 {
             64 + self.hi.trailing_zeros()
         } else {
@@ -764,7 +922,7 @@ impl Int for u128 {
         }
     }
 
-    fn rotate_left(self, shift: usize) -> u128 {
+    fn rotate_left(self, shift: u32) -> u128 {
         let rotated = match shift & 63 {
             0 => self,
             n => u128 {
@@ -779,7 +937,7 @@ impl Int for u128 {
         }
     }
 
-    fn rotate_right(self, shift: usize) -> u128 {
+    fn rotate_right(self, shift: u32) -> u128 {
         self.rotate_left(128 - shift)
     }
 
@@ -787,38 +945,12 @@ impl Int for u128 {
         u128 { lo: self.hi.swap_bytes(), hi: self.lo.swap_bytes() }
     }
 
-    #[cfg(not(target_arch="x86_64"))]
     fn checked_add(self, other: u128) -> Option<u128> {
-        self.hi.checked_add(other.hi).and_then(|new_hi| {
-            let (new_lo, carry) = unsafe { u64_add_with_overflow(self.lo, other.lo) };
-            if carry {
-                new_hi.checked_add(1).map(|new_hi_2| u128::from_parts(new_hi_2, new_lo))
-            } else {
-                Some(u128::from_parts(new_hi, new_lo))
-            }
-        })
-    }
-
-    #[allow(unused_assignments)]
-    #[cfg(target_arch="x86_64")]
-    fn checked_add(mut self, other: u128) -> Option<u128> {
-        unsafe {
-            let mut is_valid = 1u32;
-            asm!("
-                xorl %eax, %eax
-                addq $3, $1
-                adcq $4, $2
-                cmovcl %eax, $0
-            "
-            : "+r"(is_valid), "+r"(self.lo), "+r"(self.hi)
-            : "r"(other.lo), "r"(other.hi)
-            : "rax"
-            );
-            if is_valid != 0 {
-                Some(self)
-            } else {
-                None
-            }
+        let (res, overflow) = self.overflowing_add(other);
+        if overflow {
+            None
+        } else {
+            Some(res)
         }
     }
 
@@ -831,14 +963,12 @@ impl Int for u128 {
     }
 
     fn checked_mul(self, other: u128) -> Option<u128> {
-        match (self.hi, other.hi) {
-            (a, 0) => a.checked_mul(other.lo),
-            (0, c) => c.checked_mul(self.lo),
-            _ => None,
-        }.and_then(|hi| {
-            let res = u64_long_mul(self.lo, other.lo);
-            hi.checked_add(res.hi).map(|hi| u128 { hi: hi, lo: res.lo })
-        })
+        let (res, overflow) = self.overflowing_mul(other);
+        if overflow {
+            None
+        } else {
+            Some(res)
+        }
     }
 
     fn checked_div(self, other: u128) -> Option<u128> {
@@ -1113,10 +1243,7 @@ impl fmt::Display for u128 {
 
 impl fmt::Debug for u128 {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        try!(formatter.write_str("u128!("));
-        try!(fmt::Display::fmt(self, formatter));
-        try!(formatter.write_str(")"));
-        Ok(())
+        write!(formatter, "u128!({})", self)
     }
 }
 
@@ -1126,7 +1253,7 @@ impl fmt::Binary for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:b}{:064b}", self.hi, self.lo);
-            formatter.pad_integral(true, "0b", &*core_string)
+            formatter.pad_integral(true, "0b", &core_string)
         }
     }
 }
@@ -1137,7 +1264,7 @@ impl fmt::LowerHex for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:x}{:016x}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", &*core_string)
+            formatter.pad_integral(true, "0x", &core_string)
         }
     }
 }
@@ -1148,7 +1275,7 @@ impl fmt::UpperHex for u128 {
             self.lo.fmt(formatter)
         } else {
             let core_string = format!("{:X}{:016X}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", &*core_string)
+            formatter.pad_integral(true, "0x", &core_string)
         }
     }
 }
@@ -1169,7 +1296,7 @@ impl fmt::Octal for u128 {
             return lo.fmt(formatter);
         };
 
-        formatter.pad_integral(true, "0o", &*core_string)
+        formatter.pad_integral(true, "0o", &core_string)
     }
 }
 
@@ -1178,7 +1305,7 @@ mod show_tests {
     use u128::{u128, MAX};
 
     #[test]
-    fn test_show() {
+    fn test_display() {
         assert_eq!("0", format!("{}", u128::new(0)));
         assert_eq!("10578104835920319894",
                     format!("{}", u128::new(10578104835920319894)));

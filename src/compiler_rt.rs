@@ -1,6 +1,6 @@
 pub use self::detail::{udiv128, umod128, udivmod128};
 
-#[cfg(target_word_size="64")]
+#[cfg(target_pointer_width="64")]
 mod detail {
     use u128::u128;
     use std::mem::uninitialized;
@@ -29,7 +29,7 @@ mod detail {
     }
 }
 
-#[cfg(not(target_word_size="64"))]
+#[cfg(not(target_pointer_width="64"))]
 mod detail {
     use u128::{u128, ZERO};
     use std::mem::uninitialized;
@@ -96,7 +96,7 @@ mod detail {
         let mut q = n << (128 - sr);
         let mut r = n >> sr;
         let mut carry = 0;
-        for _ in (0 .. sr) {
+        for _ in 0 .. sr {
             r = r << 1;
             r.lo |= q.hi >> 63;
             q = q << 1;
@@ -113,7 +113,5 @@ mod detail {
         q
     }
 }
-
-
 
 

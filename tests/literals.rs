@@ -1,3 +1,5 @@
+/*
+
 #![feature(plugin)]
 
 #![plugin(extprim)]
@@ -64,3 +66,4 @@ fn test_literals_i() {
     assert_eq!(i128::from_parts(4719528808248670532, 1624322789729401538), I7);
 }
 
+*/

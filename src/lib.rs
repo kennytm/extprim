@@ -45,6 +45,7 @@ extern crate lazy_static;
 
 mod error;
 pub mod u128;
+pub mod forward;
 pub mod i128;
 mod compiler_rt;
 pub mod literals;
