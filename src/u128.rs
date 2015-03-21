@@ -183,13 +183,13 @@ mod add_sub_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_without_carry() {
         u128::from_parts(0x80000000_00000000, 0) + u128::from_parts(0x80000000_00000000, 0);
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_with_carry() {
         MAX + ONE;
     }
@@ -219,7 +219,7 @@ mod add_sub_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow() {
         ZERO - ONE;
     }
@@ -755,25 +755,25 @@ mod mul_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_10_10() {
         u128::from_parts(1, 0) * u128::from_parts(1, 0);
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_80_80() {
         u128::from_parts(0x80000000_00000000, 0) * u128::from_parts(0x80000000_00000000, 0);
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_max_max() {
         MAX * MAX;
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_max_2() {
         MAX * u128::new(2);
     }
@@ -787,7 +787,7 @@ mod mul_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_64_overflow_max_2() {
         MAX * 2u64;
     }
@@ -908,7 +908,7 @@ mod div_rem_tests {
     }
 
     #[test]
-    #[should_fail(expected="attempted to divide by zero")]
+    #[should_panic(expected="attempted to divide by zero")]
     fn test_div_by_zero() {
         ONE / ZERO;
     }
@@ -927,7 +927,7 @@ mod div_rem_tests {
     }
 
     #[test]
-    #[should_fail(expected="attempted remainder with a divisor of zero")]
+    #[should_panic(expected="attempted remainder with a divisor of zero")]
     fn test_rem_by_zero() {
         ONE % ZERO;
     }
@@ -1263,8 +1263,6 @@ mod int_tests {
         })
     }
 }
-
-impl UnsignedInt for u128 {}
 
 //}}}
 

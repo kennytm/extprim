@@ -1,6 +1,6 @@
 #![feature(asm)]
 #![feature(rustc_private, plugin_registrar, quote)]
-#![feature(test, core, unicode, collections)]
+#![feature(test, core, str_char)]
 
 //! This crate provides some extra simple types.
 //!

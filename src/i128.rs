@@ -157,13 +157,13 @@ mod add_sub_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_above() {
         MAX + ONE;
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_below() {
         MIN + i128::from_parts(-1, !0);
     }
@@ -183,13 +183,13 @@ mod add_sub_tests {
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow_above() {
         MAX - i128::from_parts(-1, !0);
     }
 
     #[test]
-    #[should_fail(expected="arithmetic operation overflowed")]
+    #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow_below() {
         MIN - ONE;
     }

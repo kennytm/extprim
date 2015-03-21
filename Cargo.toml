@@ -1,6 +1,6 @@
 [package]
 name = "extprim"
-version = "0.5.0"
+version = "0.5.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
