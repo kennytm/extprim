@@ -9,7 +9,7 @@ lazy_static! {
 }
 
 #[cfg(test)]
-mod local_parse_int_error_tests {
+mod tests {
     use std::error::Error;
     use error;
 
@@ -27,3 +27,4 @@ mod local_parse_int_error_tests {
         }
     }
 }
+

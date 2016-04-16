@@ -1,55 +1,44 @@
-#![unstable]
-
 //! Signed 128-bit integer.
 
-use std::num::*;
-use std::num::wrapping::{WrappingOps, OverflowingOps};
-use std::mem::transmute_copy;
 use std::str::FromStr;
-use std::any::TypeId;
 use std::fmt;
 use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
+use std::num::ParseIntError;
 
 use rand::{Rand, Rng};
+use num_traits::*;
 
 use u128::u128;
 use error;
+use traits::{ToExtraPrimitive, Wrapping};
 
 //{{{ Structure
 
 /// Number of bits a signed 128-bit number occupies.
-#[stable]
 pub const BITS: usize = 128;
 
 /// Number of bytes a signed 128-bit number occupies.
-#[stable]
 pub const BYTES: usize = 16;
 
 /// The smallest signed 128-bit integer
 /// (`-170_141_183_460_469_231_731_687_303_715_884_105_728`).
-#[stable]
 pub const MIN: i128 = i128(u128 { lo: 0, hi: 0x8000000000000000 });
 
 /// The largest signed 128-bit integer
 /// (`170_141_183_460_469_231_731_687_303_715_884_105_727`).
-#[stable]
 pub const MAX: i128 = i128(u128 { lo: !0, hi: 0x7fffffffffffffff });
 
 /// The constant 0.
-#[unstable]
 pub const ZERO: i128 = i128(::u128::ZERO);
 
 /// The constant 1.
-#[unstable]
 pub const ONE: i128 = i128(::u128::ONE);
-
 
 /// An signed 128-bit number.
 #[derive(Default, Copy, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
-#[unstable]
 pub struct i128(
     #[doc(hidden)]
     pub u128,
@@ -57,7 +46,6 @@ pub struct i128(
 
 impl i128 {
     /// Constructs a new 128-bit integer from a 64-bit integer.
-    #[unstable]
     pub fn new(lo: i64) -> i128 {
         i128(u128 { lo: lo as u64, hi: (lo >> 63) as u64 })
     }
@@ -71,7 +59,6 @@ impl i128 {
     /// assert_eq!(format!("{}", number), "-123456789012345678901234567890");
     /// // Note: -123456789012345678901234567890 = -6692605943 << 64 | 4362896299872285998
     /// ```
-    #[unstable]
     pub fn from_parts(hi: i64, lo: u64) -> i128 {
         i128(u128 { lo: lo, hi: hi as u64 })
     }
@@ -119,27 +106,99 @@ impl Rand for i128 {
 
 //{{{ Add, Sub
 
-fn overflowing_add(left: i128, right: i128) -> (i128, bool) {
-    let left_sign = left.is_negative();
-    let right_sign = right.is_negative();
-    let res = left.wrapping_add(right);
-    let res_sign = res.is_negative();
-    (res, left_sign == right_sign && res_sign != left_sign)
+impl i128 {
+    pub fn wrapping_add(self, other: i128) -> i128 {
+        i128(self.0.wrapping_add(other.0))
+    }
+
+    pub fn wrapping_sub(self, other: i128) -> i128 {
+        i128(self.0.wrapping_sub(other.0))
+    }
+
+    pub fn wrapping_neg(self) -> i128 {
+        i128(self.0.wrapping_neg())
+    }
+
+    pub fn overflowing_add(self, other: i128) -> (i128, bool) {
+        let left_sign = self.is_negative();
+        let right_sign = other.is_negative();
+        let res = self.wrapping_add(other);
+        let res_sign = res.is_negative();
+        (res, left_sign == right_sign && res_sign != left_sign)
+    }
+
+    pub fn overflowing_sub(self, other: i128) -> (i128, bool) {
+        let left_sign = self.is_negative();
+        let right_sign = other.is_negative();
+        let res = self.wrapping_sub(other);
+        let res_sign = res.is_negative();
+        (res, left_sign != right_sign && res_sign != left_sign)
+    }
+
+    pub fn overflowing_neg(self) -> (i128, bool) {
+        (self.wrapping_neg(), self == MIN)
+    }
+
+    pub fn checked_neg(self) -> Option<i128> {
+        match self.overflowing_neg() {
+            (v, false) => Some(v),
+            (_, true) => None,
+        }
+    }
+
+    pub fn saturating_add(self, other: i128) -> i128 {
+        self.checked_add(other)
+            .unwrap_or_else(|| if other.is_negative() { MIN } else { MAX })
+    }
+
+    pub fn saturating_sub(self, other: i128) -> i128 {
+        self.checked_sub(other)
+            .unwrap_or_else(|| if other.is_negative() { MAX } else { MIN })
+    }
+
+    pub fn saturating_neg(self) -> i128 {
+        self.checked_neg().unwrap_or(MAX)
+    }
 }
 
-fn overflowing_sub(left: i128, right: i128) -> (i128, bool) {
-    let left_sign = left.is_negative();
-    let right_sign = right.is_negative();
-    let res = left.wrapping_sub(right);
-    let res_sign = res.is_negative();
-    (res, left_sign != right_sign && res_sign != left_sign)
-}
+forward_symmetric!(Add(add, checked_add, wrapping_add, overflowing_add) for i128);
+forward_symmetric!(Sub(sub, checked_sub, wrapping_sub, overflowing_sub) for i128);
+forward_assign!(AddAssign(add_assign, add) for i128);
+forward_assign!(SubAssign(sub_assign, sub) for i128);
 
 impl Neg for i128 {
-    type Output = i128;
+    type Output = Self;
+    fn neg(self) -> Self {
+        self.checked_neg().unwrap_or_else(|| panic!("arithmetic operation overflowed"))
+    }
+}
 
-    fn neg(self) -> i128 {
-        i128(-self.0)
+impl Neg for Wrapping<i128> {
+    type Output = Self;
+    fn neg(self) -> Self {
+        Wrapping(self.0.wrapping_neg())
+    }
+}
+
+impl CheckedAdd for i128 {
+    fn checked_add(&self, other: &Self) -> Option<Self> {
+        Self::checked_add(*self, *other)
+    }
+}
+
+impl CheckedSub for i128 {
+    fn checked_sub(&self, other: &Self) -> Option<Self> {
+        Self::checked_sub(*self, *other)
+    }
+}
+
+impl Saturating for i128 {
+    fn saturating_add(self, other: Self) -> Self {
+        Self::saturating_add(self, other)
+    }
+
+    fn saturating_sub(self, other: Self) -> Self {
+        Self::saturating_add(self, other)
     }
 }
 
@@ -195,11 +254,21 @@ mod add_sub_tests {
     }
 
     #[test]
+    #[should_panic(expected="arithmetic operation overflowed")]
+    fn test_neg_min() {
+        -MIN;
+    }
+
+    #[test]
     fn test_neg() {
         let neg1 = i128::from_parts(-1, !0);
         assert_eq!(neg1, -ONE);
         assert_eq!(ONE, -neg1);
-        assert_eq!(-MIN, MIN);
+
+        assert_eq!(MIN.wrapping_neg(), MIN);
+        assert_eq!(MIN.overflowing_neg(), (MIN, true));
+        assert_eq!(MIN.saturating_neg(), MAX);
+        assert_eq!(MIN.checked_neg(), None);
     }
 }
 
@@ -208,14 +277,12 @@ mod add_sub_tests {
 //{{{ PartialOrd, Ord
 
 impl PartialOrd for i128 {
-    #[inline(always)]
     fn partial_cmp(&self, other: &i128) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for i128 {
-    #[inline(always)]
     fn cmp(&self, other: &i128) -> Ordering {
         (self.high64(), self.low64()).cmp(&(other.high64(), other.low64()))
     }
@@ -228,8 +295,8 @@ mod cmp_tests {
 
     const TEST_CASES: &'static [i128; 7] = &[
         MIN,
-        i128(u128 { lo: 0, hi: -1 }),
-        i128(u128 { lo: !0, hi: -1 }),
+        i128(u128 { lo: 0, hi: !0 }),
+        i128(u128 { lo: !0, hi: !0 }),
         i128(u128 { lo: 0, hi: 0 }),
         i128(u128 { lo: 1, hi: 0 }),
         i128(u128 { lo: 0, hi: 1 }),
@@ -251,36 +318,64 @@ mod cmp_tests {
 //{{{ Not, BitAnd, BitOr, BitXor
 
 impl Not for i128 {
-    type Output = i128;
-
-    fn not(self) -> i128 {
+    type Output = Self;
+    fn not(self) -> Self {
         i128(!self.0)
     }
 }
 
 impl BitAnd for i128 {
-    type Output = i128;
-
-    fn bitand(self, other: i128) -> i128 {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
         i128(self.0 & other.0)
     }
 }
 
 impl BitOr for i128 {
-    type Output = i128;
-
-    fn bitor(self, other: i128) -> i128 {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
         i128(self.0 | other.0)
     }
 }
 
 impl BitXor for i128 {
-    type Output = i128;
-
-    fn bitxor(self, other: i128) -> i128 {
+    type Output = Self;
+    fn bitxor(self, other: Self) -> Self {
         i128(self.0 ^ other.0)
     }
 }
+
+impl Not for Wrapping<i128> {
+    type Output = Self;
+    fn not(self) -> Self {
+        Wrapping(!self.0)
+    }
+}
+
+impl BitAnd for Wrapping<i128> {
+    type Output = Self;
+    fn bitand(self, other: Self) -> Self {
+        Wrapping(self.0 & other.0)
+    }
+}
+
+impl BitOr for Wrapping<i128> {
+    type Output = Self;
+    fn bitor(self, other: Self) -> Self {
+        Wrapping(self.0 | other.0)
+    }
+}
+
+impl BitXor for Wrapping<i128> {
+    type Output = Self;
+    fn bitxor(self, other: Self) -> Self {
+        Wrapping(self.0 ^ other.0)
+    }
+}
+
+forward_assign!(BitAndAssign(bitand_assign, bitand) for i128);
+forward_assign!(BitOrAssign(bitor_assign, bitor) for i128);
+forward_assign!(BitXorAssign(bitxor_assign, bitxor) for i128);
 
 #[cfg(test)]
 mod bitwise_tests {
@@ -318,58 +413,46 @@ mod bitwise_tests {
 
 //{{{ Shl, Shr
 
-impl Shl<u32> for i128 {
-    type Output = i128;
-
-    fn shl(self, shift: u32) -> i128 {
-        i128(self.0 << shift)
+impl i128 {
+    pub fn wrapping_shl(self, shift: u32) -> i128 {
+        i128(self.0.wrapping_shl(shift))
     }
-}
 
-impl Shr<u32> for i128 {
-    type Output = i128;
-
-    fn shr(self, shift: u32) -> i128 {
+    pub fn wrapping_shr(self, shift: u32) -> i128 {
         let hi = self.high64();
         let lo = self.low64();
 
         let (hi, lo) = if (shift & 64) != 0 {
             (hi >> 63, (hi >> (shift & 63)) as u64)
         } else {
-            (hi >> shift, if shift == 0 {
-                lo >> shift
-            } else {
-                lo >> shift | (hi as u64) << 64.wrapping_sub(shift)
-            })
+            let new_hi = hi.wrapping_shr(shift);
+            let mut new_lo = lo.wrapping_shr(shift);
+            if (shift & 127) != 0 {
+                new_lo |= (hi as u64).wrapping_shl(64u32.wrapping_sub(shift));
+            }
+            (new_hi, new_lo)
         };
 
         i128::from_parts(hi, lo)
     }
+
+    pub fn overflowing_shl(self, other: u32) -> (i128, bool) {
+        (self.wrapping_shl(other), other >= 128)
+    }
+
+    pub fn overflowing_shr(self, other: u32) -> (i128, bool) {
+        (self.wrapping_shr(other), other >= 128)
+    }
 }
+
+forward_shift!(Shl(shl, checked_shl, wrapping_shl, overflowing_shl) for i128);
+forward_shift!(Shr(shr, checked_shr, wrapping_shr, overflowing_shr) for i128);
+forward_assign!(ShlAssign<usize>(shl_assign, shl) for i128);
+forward_assign!(ShrAssign<usize>(shr_assign, shr) for i128);
 
 #[cfg(test)]
 mod shift_tests {
     use i128::i128;
-    use test::{Bencher, black_box};
-
-    // randomize shift range to avoid possible branch prediction effect.
-    const BENCH_SHIFTS: &'static [usize] = &[
-        77, 45, 57, 7, 34, 75, 38, 89, 89, 66, 16, 111, 66, 123, 14, 80, 94, 43,
-        46, 86, 121, 31, 123, 33, 23, 57, 50, 28, 26, 46, 8, 88, 74, 55, 108,
-        127, 1, 70, 73, 2, 1, 45, 36, 96, 124, 124, 91, 63, 25, 94, 8, 68, 41,
-        127, 107, 10, 111, 98, 97, 72, 78, 10, 125, 17, 62, 3, 65, 67, 13, 41,
-        68, 109, 23, 100, 98, 16, 78, 13, 0, 63, 107, 64, 13, 23, 69, 73, 2, 38,
-        16, 9, 124, 120, 39, 119, 3, 15, 25, 11, 84, 102, 69, 58, 39, 116, 66,
-        87, 111, 17, 11, 29, 35, 123, 23, 38, 43, 85, 32, 7, 34, 84, 27, 35,
-        122, 64, 33, 83, 78, 105, 31, 5, 58, 25, 21, 34, 15, 94, 10, 23, 48, 89,
-        23, 99, 110, 105, 32, 7, 116, 31, 10, 14, 22, 84, 40, 57, 7, 35, 8, 95,
-        121, 66, 95, 103, 26, 62, 24, 36, 48, 58, 122, 66, 37, 56, 35, 87, 36,
-        41, 75, 37, 25, 40, 60, 39, 94, 18, 33, 113, 34, 66, 34, 34, 88, 95, 81,
-        115, 10, 67, 33, 34, 23, 53, 10, 119, 54, 107, 37, 17, 85, 42, 83, 85,
-        102, 104, 94, 24, 97, 104, 93, 9, 95, 75, 41, 112, 64, 63, 72, 3, 26,
-        65, 103, 88, 121, 105, 98, 82, 89, 30, 37, 64, 68, 41, 93, 57, 105, 100,
-        108, 102, 44, 17, 61, 72, 33, 126, 73, 105, 0, 119, 97, 28, 9, 101, 44,
-    ];
 
     #[test]
     fn test_shl() {
@@ -412,13 +495,38 @@ mod shift_tests {
         assert_eq!(i128::from_parts(-0x7fdac9c2232ae28, 0x509d78e4a3008bcd) >> 120,
                     i128::from_parts(-1, 0xfffffffffffffff8));
     }
+}
+
+#[cfg(all(test, extprim_channel="unstable"))]
+mod shift_bench {
+    use i128::i128;
+    use test::{Bencher, black_box};
+
+    // randomize shift range to avoid possible branch prediction effect.
+    const BENCH_SHIFTS: &'static [u32] = &[
+        77, 45, 57, 7, 34, 75, 38, 89, 89, 66, 16, 111, 66, 123, 14, 80, 94, 43,
+        46, 86, 121, 31, 123, 33, 23, 57, 50, 28, 26, 46, 8, 88, 74, 55, 108,
+        127, 1, 70, 73, 2, 1, 45, 36, 96, 124, 124, 91, 63, 25, 94, 8, 68, 41,
+        127, 107, 10, 111, 98, 97, 72, 78, 10, 125, 17, 62, 3, 65, 67, 13, 41,
+        68, 109, 23, 100, 98, 16, 78, 13, 0, 63, 107, 64, 13, 23, 69, 73, 2, 38,
+        16, 9, 124, 120, 39, 119, 3, 15, 25, 11, 84, 102, 69, 58, 39, 116, 66,
+        87, 111, 17, 11, 29, 35, 123, 23, 38, 43, 85, 32, 7, 34, 84, 27, 35,
+        122, 64, 33, 83, 78, 105, 31, 5, 58, 25, 21, 34, 15, 94, 10, 23, 48, 89,
+        23, 99, 110, 105, 32, 7, 116, 31, 10, 14, 22, 84, 40, 57, 7, 35, 8, 95,
+        121, 66, 95, 103, 26, 62, 24, 36, 48, 58, 122, 66, 37, 56, 35, 87, 36,
+        41, 75, 37, 25, 40, 60, 39, 94, 18, 33, 113, 34, 66, 34, 34, 88, 95, 81,
+        115, 10, 67, 33, 34, 23, 53, 10, 119, 54, 107, 37, 17, 85, 42, 83, 85,
+        102, 104, 94, 24, 97, 104, 93, 9, 95, 75, 41, 112, 64, 63, 72, 3, 26,
+        65, 103, 88, 121, 105, 98, 82, 89, 30, 37, 64, 68, 41, 93, 57, 105, 100,
+        108, 102, 44, 17, 61, 72, 33, 126, 73, 105, 0, 119, 97, 28, 9, 101, 44,
+    ];
 
     #[bench]
     fn bench_shr(bencher: &mut Bencher) {
         let number = i128::from_parts(-8704825901651121218, 3937562729638942691);
         bencher.iter(|| {
-            for i in BENCH_SHIFTS.iter() {
-                black_box(number >> *i);
+            for i in BENCH_SHIFTS {
+                black_box(number.wrapping_shr(*i));
             }
         });
     }
@@ -430,30 +538,54 @@ mod shift_tests {
 
 fn sign_abs(x: i128) -> (bool, u128) {
     if x.is_negative() {
-        (true, (-x).0)
+        (true, x.0.wrapping_neg())
     } else {
         (false, x.0)
     }
 }
 
-fn overflowing_mul(left: i128, right: i128) -> (i128, bool) {
-    if left == ZERO || right == ZERO {
-        return (ZERO, false);
+fn from_sign_abs(sign: bool, abs: u128) -> i128 {
+    i128(if sign { abs.wrapping_neg() } else { abs })
+}
+
+impl i128 {
+    pub fn overflowing_mul(self, other: i128) -> (i128, bool) {
+        if self == ZERO || other == ZERO {
+            return (ZERO, false);
+        }
+
+        let (sa, a) = sign_abs(self);
+        let (sb, b) = sign_abs(other);
+        let res_is_neg = sa != sb;
+
+        let (res, res_overflow) = a.overflowing_mul(b);
+        let res = from_sign_abs(res_is_neg, res);
+        (res, res_overflow || res.is_negative() != res_is_neg)
     }
 
-    let (sa, a) = sign_abs(left);
-    let (sb, b) = sign_abs(right);
-    let res_is_neg = sa != sb;
+    pub fn wrapping_mul(self, other: i128) -> i128 {
+        i128(self.0.wrapping_mul(other.0))
+    }
 
-    let (res, res_overflow) = a.overflowing_mul(b);
-    let res = i128(if res_is_neg { -res } else { res });
-    (res, res_overflow || res.is_negative() != res_is_neg)
+    pub fn saturating_mul(self, other: i128) -> i128 {
+        self.checked_mul(other).unwrap_or_else(|| {
+            if self.is_negative() == other.is_negative() { MAX } else { MIN }
+        })
+    }
+}
+
+forward_symmetric!(Mul(mul, checked_mul, wrapping_mul, overflowing_mul) for i128);
+forward_assign!(MulAssign(mul_assign, mul) for i128);
+
+impl CheckedMul for i128 {
+    fn checked_mul(&self, other: &Self) -> Option<Self> {
+        Self::checked_mul(*self, *other)
+    }
 }
 
 #[cfg(test)]
 mod mul_tests {
     use i128::{i128, ONE, MAX, MIN};
-    use std::num::wrapping::{WrappingOps, OverflowingOps};
 
     #[test]
     fn test_mul() {
@@ -465,6 +597,7 @@ mod mul_tests {
         assert_eq!(i128::new(-4) * i128::new(-9), i128::new(36));
         assert_eq!(i128::new(-7) * i128::new(3), i128::new(-21));
         assert_eq!(i128::from_parts(1, 1) * i128::new(-9), i128::from_parts(-10, !8));
+        assert_eq!(i128::from_parts(0x4000_0000_0000_0000, 0) * i128::new(-2), MIN);
     }
 
     #[test]
@@ -472,11 +605,21 @@ mod mul_tests {
         let a = i128::from_parts(-6140994497999405230, 2270645839074617067);
         let b = i128::from_parts(8696394550295834000, 13800979035109902541);
         let c = i128::from_parts(-6771355848177145191, 5110157532910617135);
+
         assert_eq!(a.wrapping_mul(b), c);
         assert_eq!(a.overflowing_mul(b), (c, true));
+        assert_eq!(a.checked_mul(b), None);
+        assert_eq!(a.saturating_mul(b), MIN);
 
+        assert_eq!(i128::new(-1).wrapping_mul(i128::new(-1)), ONE);
         assert_eq!(i128::new(-1).overflowing_mul(i128::new(-1)), (ONE, false));
+        assert_eq!(i128::new(-1).checked_mul(i128::new(-1)), Some(ONE));
+        assert_eq!(i128::new(-1).saturating_mul(i128::new(-1)), ONE);
+
+        assert_eq!(MAX.wrapping_mul(i128::new(2)), i128::from_parts(-1, !1));
         assert_eq!(MAX.overflowing_mul(i128::new(2)), (i128::from_parts(-1, !1), true));
+        assert_eq!(MAX.checked_mul(i128::new(2)), None);
+        assert_eq!(MAX.saturating_mul(i128::new(2)), MAX);
     }
 }
 
@@ -484,38 +627,103 @@ mod mul_tests {
 
 //{{{ Div, Rem
 
-impl Div for i128 {
-    type Output = i128;
-
-    fn div(self, other: i128) -> i128 {
+impl i128 {
+    pub fn wrapping_div(self, other: i128) -> i128 {
         let (sa, a) = sign_abs(self);
         let (sb, b) = sign_abs(other);
-        let res = a / b;
-        i128(if sa != sb { -res } else { res })
+        let res = a.wrapping_div(b);
+        from_sign_abs(sa != sb, res)
+    }
+
+    pub fn wrapping_rem(self, other: i128) -> i128 {
+        let (sa, a) = sign_abs(self);
+        let (_, b) = sign_abs(other);
+        let res = a.wrapping_rem(b);
+        from_sign_abs(sa, res)
+    }
+
+    pub fn overflowing_div(self, other: i128) -> (i128, bool) {
+        if self == MIN && other == -ONE {
+            (MIN, true)
+        } else {
+            (self.wrapping_div(other), false)
+        }
+    }
+
+    pub fn overflowing_rem(self, other: i128) -> (i128, bool) {
+        if self == MIN && other == -ONE {
+            (ZERO, true)
+        } else {
+            (self.wrapping_div(other), false)
+        }
+    }
+
+    pub fn checked_div(self, other: i128) -> Option<i128> {
+        if other == ZERO || self == MIN && other == -ONE {
+            None
+        } else {
+            Some(self.wrapping_div(other))
+        }
+    }
+
+    pub fn checked_rem(self, other: i128) -> Option<i128> {
+        if other == ZERO || self == MIN && other == -ONE {
+            None
+        } else {
+            Some(self.wrapping_rem(other))
+        }
+    }
+}
+
+impl Div for i128 {
+    type Output = Self;
+    fn div(self, other: Self) -> Self {
+        self.wrapping_div(other)
     }
 }
 
 impl Rem for i128 {
-    type Output = i128;
+    type Output = Self;
+    fn rem(self, other: Self) -> Self {
+        self.wrapping_rem(other)
+    }
+}
 
-    fn rem(self, other: i128) -> i128 {
-        let (sa, a) = sign_abs(self);
-        let (_, b) = sign_abs(other);
-        let res = a % b;
-        i128(if sa { -res } else { res })
+impl Div for Wrapping<i128> {
+    type Output = Self;
+    fn div(self, other: Self) -> Self {
+        Wrapping(self.0.wrapping_div(other.0))
+    }
+}
+
+impl Rem for Wrapping<i128> {
+    type Output = Self;
+    fn rem(self, other: Self) -> Self {
+        Wrapping(self.0.wrapping_rem(other.0))
+    }
+}
+
+forward_assign!(DivAssign(div_assign, div) for i128);
+forward_assign!(RemAssign(rem_assign, rem) for i128);
+
+impl CheckedDiv for i128 {
+    fn checked_div(&self, other: &Self) -> Option<Self> {
+        Self::checked_div(*self, *other)
     }
 }
 
 /// Computes the divisor and remainder simultaneously. Returns `(a/b, a%b)`.
 ///
-/// Panics if the denominator is zero. Unlike the primitive types, calling this
-/// is likely faster than calling `a/b` and `a%b` separately.
-#[unstable]
+/// Panics when overflow or if the denominator is zero. Unlike the primitive
+/// types, calling this is likely faster than calling `a/b` and `a%b` separately.
 pub fn div_rem(numerator: i128, denominator: i128) -> (i128, i128) {
+    if cfg!(debug_assertions) && numerator == MIN && denominator == -ONE {
+        panic!("arithmetic operation overflowed");
+    }
     let (sn, n) = sign_abs(numerator);
     let (sd, d) = sign_abs(denominator);
     let (div, rem) = ::u128::div_rem(n, d);
-    (i128(if sn != sd { -div } else { div }), i128(if sn { -rem } else { rem }))
+    (from_sign_abs(sn != sd, div), from_sign_abs(sn, rem))
 }
 
 #[cfg(test)]
@@ -598,134 +806,124 @@ impl FromPrimitive for i128 {
     }
 }
 
-impl NumCast for i128 {
-    fn from<T: ToPrimitive + 'static>(n: T) -> Option<i128> {
-        // TODO: Rust doesn't support specialization, thus this mess.
-        //       See rust-lang/rust#7059. LLVM is able to optimize this though.
-        let typeid = TypeId::of::<T>();
-
-        if typeid == TypeId::of::<i128>() {
-            Some(unsafe { transmute_copy(&n) })
-        } else if typeid == TypeId::of::<u128>() {
-            let n: u128 = unsafe { transmute_copy(&n) };
-            if (n.hi >> 63) != 0 {
-                None
-            } else {
-                Some(i128(n))
-            }
-        } else if typeid == TypeId::of::<u64>() || typeid == TypeId::of::<usize>() {
-            n.to_u64().map(|x| i128(u128::new(x)))
+impl ToExtraPrimitive for i128 {
+    fn to_u128(&self) -> Option<u128> {
+        if self.is_negative() {
+            None
         } else {
-            n.to_i64().map(i128::new)
+            Some(self.0)
         }
     }
-}
 
-#[cfg(test)]
-mod num_cast_tests {
-    use std::num::NumCast;
-    use u128;
-    use i128::{i128, ONE, MIN, MAX};
-
-    #[test]
-    fn test_num_cast() {
-        assert_eq!(None::<i64>, NumCast::from(0x8000_0000_0000_0000u64)); // sanity check.
-        assert_eq!(None::<i128>, NumCast::from(u128::MAX));
-        assert_eq!(Some(ONE), NumCast::from(1i8));
-        assert_eq!(Some(-ONE), NumCast::from(-1i8));
-        assert_eq!(Some(i128::from_parts(0, 0x8000_0000_0000_0000)), NumCast::from(0x8000_0000_0000_0000u64));
-        assert_eq!(Some(MAX), NumCast::from(MAX));
-        assert_eq!(Some(MIN), NumCast::from(MIN));
-
-        assert_eq!(Some(ONE), NumCast::from(i128::new(1)));
-        assert_eq!(None::<i128>, NumCast::from(u128::u128::from_parts(0x8000_0000_0000_0000, 0)));
+    fn to_i128(&self) -> Option<i128> {
+        Some(*self)
     }
 }
 
 //}}}
 
-//{{{ WrappingOps & OverflowingOps
+//{{{ Constants
 
-impl WrappingOps for i128 {
-    fn wrapping_add(self, other: i128) -> i128 {
-        i128(self.0.wrapping_add(other.0))
+impl Bounded for i128 {
+    fn min_value() -> Self {
+        MIN
     }
-    fn wrapping_sub(self, other: i128) -> i128 {
-        i128(self.0.wrapping_sub(other.0))
-    }
-    fn wrapping_mul(self, other: i128) -> i128 {
-        i128(self.0.wrapping_mul(other.0))
+
+    fn max_value() -> Self {
+        MAX
     }
 }
 
-impl OverflowingOps for i128 {
-    fn overflowing_add(self, other: i128) -> (i128, bool) {
-        overflowing_add(self, other)
+impl Zero for i128 {
+    fn zero() -> Self {
+        ZERO
     }
-    fn overflowing_sub(self, other: i128) -> (i128, bool) {
-        overflowing_sub(self, other)
+
+    fn is_zero(&self) -> bool {
+        *self == ZERO
     }
-    fn overflowing_mul(self, other: i128) -> (i128, bool) {
-        overflowing_mul(self, other)
+}
+
+impl One for i128 {
+    fn one() -> Self {
+        ONE
     }
 }
 
 //}}}
 
-//{{{ Int
+//{{{ PrimInt
 
-impl Int for i128 {
-    fn zero() -> i128 { ZERO }
-    fn one() -> i128 { ONE }
-    fn min_value() -> i128 { MIN }
-    fn max_value() -> i128 { MAX }
-
+impl PrimInt for i128 {
     fn count_ones(self) -> u32 { self.0.count_ones() }
+    fn count_zeros(self) -> u32 { self.0.count_zeros() }
     fn leading_zeros(self) -> u32 { self.0.leading_zeros() }
     fn trailing_zeros(self) -> u32 { self.0.trailing_zeros() }
     fn rotate_left(self, shift: u32) -> i128 { i128(self.0.rotate_left(shift)) }
     fn rotate_right(self, shift: u32) -> i128 { i128(self.0.rotate_right(shift)) }
     fn swap_bytes(self) -> i128 { i128(self.0.swap_bytes()) }
 
-    fn checked_add(self, other: i128) -> Option<i128> {
-        let (res, overflow) = self.overflowing_add(other);
-        if overflow {
-            None
+    fn signed_shl(self, shift: u32) -> Self {
+        self << (shift as usize)
+    }
+
+    fn signed_shr(self, shift: u32) -> Self {
+        self >> (shift as usize)
+    }
+
+    fn unsigned_shl(self, shift: u32) -> Self {
+        self << (shift as usize)
+    }
+
+    fn unsigned_shr(self, shift: u32) -> Self {
+        i128(self.0 >> (shift as usize))
+    }
+
+    fn from_be(x: Self) -> Self {
+        if cfg!(target_endian="big") {
+            x
         } else {
-            Some(res)
+            x.swap_bytes()
         }
     }
 
-    fn checked_sub(self, other: i128) -> Option<i128> {
-        let (res, overflow) = self.overflowing_sub(other);
-        if overflow {
-            None
+    fn from_le(x: Self) -> Self {
+        if cfg!(target_endian="little") {
+            x
         } else {
-            Some(res)
+            x.swap_bytes()
         }
     }
 
-    fn checked_mul(self, other: i128) -> Option<i128> {
-        let (res, overflow) = self.overflowing_mul(other);
-        if overflow {
-            None
-        } else {
-            Some(res)
-        }
+    fn to_be(self) -> Self {
+        PrimInt::from_be(self)
     }
 
-    fn checked_div(self, other: i128) -> Option<i128> {
-        if other == ZERO || self == MIN && other == -ONE {
-            None
-        } else {
-            Some(self / other)
+    fn to_le(self) -> Self {
+        PrimInt::from_le(self)
+    }
+
+    fn pow(self, mut exp: u32) -> Self {
+        let mut base = self;
+        let mut acc = ONE;
+
+        while exp > 1 {
+            if (exp & 1) == 1 {
+                acc *= base;
+            }
+            exp /= 2;
+            base *= base;
         }
+
+        if exp == 1 {
+            acc *= base;
+        }
+        acc
     }
 }
 
 #[cfg(test)]
-mod int_tests {
-    use std::num::Int;
+mod checked_tests {
     use std::u64;
     use std::i64;
     use i128::{i128, ZERO, ONE, MAX, MIN};
@@ -799,28 +997,36 @@ mod int_tests {
 
 //}}}
 
-//{{{ SignedInt
+//{{{ Signed
 
-impl SignedInt for i128 {
-    fn abs(self) -> i128 {
+impl Signed for i128 {
+    fn abs(&self) -> Self {
         if self.is_negative() {
-            self
+            self.wrapping_neg()
         } else {
-            -self
+            *self
         }
     }
 
-    fn is_positive(self) -> bool {
+    fn abs_sub(&self, other: &Self) -> Self {
+        if self <= other {
+            ZERO
+        } else {
+            self.wrapping_sub(*other)
+        }
+    }
+
+    fn is_positive(&self) -> bool {
         let hi = self.high64();
         let lo = self.low64();
         hi > 0 || hi == 0 && lo > 0
     }
 
-    fn is_negative(self) -> bool {
+    fn is_negative(&self) -> bool {
         self.high64() < 0
     }
 
-    fn signum(self) -> i128 {
+    fn signum(&self) -> Self {
         let hi = self.high64();
         let lo = self.low64();
         if hi < 0 {
@@ -837,23 +1043,22 @@ impl SignedInt for i128 {
 
 //{{{ FromStr, FromStrRadix
 
-impl FromStrRadix for i128 {
-    type Err = ParseIntError;
-
-    fn from_str_radix(src: &str, radix: u32) -> Result<i128, ParseIntError> {
+impl i128 {
+    pub fn from_str_radix(src: &str, radix: u32) -> Result<i128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
 
-        let (is_negative, src) = match src.slice_shift_char() {
-            Some(('-', rest)) => (true, rest),
+        let mut src_chars = src.chars();
+        let (is_negative, src) = match src_chars.next() {
+            Some('-') => (true, src_chars.as_str()),
             Some(_) => (false, src),
             None => return Err(error::EMPTY.clone()),
         };
 
-        match <u128 as FromStrRadix>::from_str_radix(src, radix) {
+        match u128::from_str_radix(src, radix) {
             Ok(res) => {
-                let res = i128(if is_negative { -res } else { res });
+                let res = from_sign_abs(is_negative, res);
                 if res != ZERO && res.is_negative() != is_negative {
                     Err(if is_negative {
                         error::UNDERFLOW.clone()
@@ -875,18 +1080,25 @@ impl FromStrRadix for i128 {
     }
 }
 
+impl Num for i128 {
+    type FromStrRadixErr = ParseIntError;
+
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, ParseIntError> {
+        Self::from_str_radix(src, radix)
+    }
+}
+
 impl FromStr for i128 {
     type Err = ParseIntError;
 
     fn from_str(src: &str) -> Result<i128, ParseIntError> {
-        FromStrRadix::from_str_radix(src, 10)
+        Self::from_str_radix(src, 10)
     }
 }
 
 #[cfg(test)]
 mod from_str_tests {
     use i128::{i128, ZERO, ONE, MIN, MAX};
-    use std::num::FromStrRadix;
     use error;
 
     #[test]
@@ -932,21 +1144,21 @@ mod from_str_tests {
         let neg = i128::from_parts(-7620305690708017834, 34929685051752008);
         for (base2, res) in NEG_TEST_RESULTS.iter().enumerate() {
             let base = (base2 + 2) as u32;
-            assert_eq!(Ok(neg), FromStrRadix::from_str_radix(*res, base));
-            assert_eq!(Ok(-neg), FromStrRadix::from_str_radix(&res[1..], base));
+            assert_eq!(Ok(neg), i128::from_str_radix(*res, base));
+            assert_eq!(Ok(-neg), i128::from_str_radix(&res[1..], base));
         }
 
-        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0", 2));
-        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("-0", 2));
-        assert_eq!(Ok(ZERO), FromStrRadix::from_str_radix("0000000000000000000000000000000000", 36));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), <i128 as FromStrRadix>::from_str_radix("123", 3));
-        assert_eq!(Ok(-ONE), FromStrRadix::from_str_radix("-1", 10));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), <i128 as FromStrRadix>::from_str_radix("~1", 10));
-        assert_eq!(Err(error::EMPTY.clone()), <i128 as FromStrRadix>::from_str_radix("", 10));
-        assert_eq!(Ok(MAX), FromStrRadix::from_str_radix("7ksyyizzkutudzbv8aqztecjj", 36));
-        assert_eq!(Ok(MIN), FromStrRadix::from_str_radix("-7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(Err(error::OVERFLOW.clone()), <i128 as FromStrRadix>::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(Err(error::UNDERFLOW.clone()), <i128 as FromStrRadix>::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
+        assert_eq!(Ok(ZERO), i128::from_str_radix("0", 2));
+        assert_eq!(Ok(ZERO), i128::from_str_radix("-0", 2));
+        assert_eq!(Ok(ZERO), i128::from_str_radix("0000000000000000000000000000000000", 36));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), i128::from_str_radix("123", 3));
+        assert_eq!(Ok(-ONE), i128::from_str_radix("-1", 10));
+        assert_eq!(Err(error::INVALID_DIGIT.clone()), i128::from_str_radix("~1", 10));
+        assert_eq!(Err(error::EMPTY.clone()), i128::from_str_radix("", 10));
+        assert_eq!(Ok(MAX), i128::from_str_radix("7ksyyizzkutudzbv8aqztecjj", 36));
+        assert_eq!(Ok(MIN), i128::from_str_radix("-7ksyyizzkutudzbv8aqztecjk", 36));
+        assert_eq!(Err(error::OVERFLOW.clone()), i128::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
+        assert_eq!(Err(error::UNDERFLOW.clone()), i128::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
     }
 }
 
@@ -954,7 +1166,7 @@ mod from_str_tests {
 
 //{{{ String, Binary, LowerHex, UpperHex, Octal, Show
 
-// As of 0.13, all signed numbers will be printed as unsigned in binary, octal
+// In Rust, all signed numbers will be printed as unsigned in binary, octal
 // and hex mode.
 
 impl fmt::Binary for i128 {
@@ -988,7 +1200,7 @@ impl fmt::Display for i128 {
         } else if *self == MIN {
             formatter.pad_integral(false, "", "170141183460469231731687303715884105728")
         } else {
-            let core_string = format!("{}", (-*self).0);
+            let core_string = format!("{}", self.0.wrapping_neg());
             formatter.pad_integral(false, "", &*core_string)
         }
     }
@@ -1029,4 +1241,3 @@ mod show_tests {
 }
 
 //}}}
-

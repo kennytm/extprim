@@ -1,7 +1,3 @@
-#![feature(asm)]
-#![feature(rustc_private, plugin_registrar, quote)]
-#![feature(test, core, str_char)]
-
 //! This crate provides some extra simple types.
 //!
 //! u128 and i128
@@ -20,34 +16,34 @@
 //! To construct u128 or i128 at compile time (for `const` items for instance),
 //! one should use the `u128!` and `i128!` macros.
 //!
-//! ```
-//! #![feature(plugin)]
-//!
-//! #![plugin(extprim)]
-//!
-//! #[allow(plugin_as_library)]
+//! ```ignored
 //! extern crate extprim;
 //! use extprim::i128::i128;
 //!
-//! const SOME_BIG_VALUE: i128 = i128!(-123_456_789_987_654_321_000);
 //! fn main() {
-//!     assert_eq!("-123456789987654321000", format!("{}", SOME_BIG_VALUE));
+//!     let some_big_value = i128::from_str("-123_456_789_987_654_321_000");
+//!     assert_eq!("-123456789987654321000", format!("{}", some_big_value));
 //! }
 //! ```
 //!
 
-extern crate core;
+#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization))]
+
+#[cfg(extprim_channel="unstable")]
 extern crate test;
-extern crate syntax;
-extern crate rustc;
+
+extern crate core;
 extern crate rand;
 #[macro_use]
 extern crate lazy_static;
+extern crate num_traits;
 
 mod error;
+#[macro_use]
+mod forward;
+pub mod traits;
 pub mod u128;
-pub mod forward;
 pub mod i128;
+pub mod cast;
 mod compiler_rt;
-pub mod literals;
 
