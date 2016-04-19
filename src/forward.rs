@@ -7,8 +7,11 @@ macro_rules! forward_symmetric {
     };
     ($tn:ident<$arg:ty>($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty) => {
         forward_impl! {
-            $tn<$arg; $arg { y if true => y }; Wrapping<$arg> { x => x.0 }> ($name, $cname, $wname, $oname) for $target,
-            "arithmetic operation overflowed"
+            $tn<
+                $arg;
+                $arg { y => y };
+                Wrapping<$arg> { x => x.0 }
+            > ($name, $cname, $wname, $oname) for $target, "arithmetic operation overflowed"
         }
     }
 }
@@ -17,8 +20,11 @@ macro_rules! forward_symmetric {
 macro_rules! forward_shift {
     ($tn:ident($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty) => {
         forward_impl! {
-            $tn<u32; usize { y if y <= 0xffffffff => y as u32 }; u32 { x => x }> ($name, $cname, $wname, $oname) for $target,
-            "shift operation overflowed"
+            $tn<
+                u32;
+                u8|u16|u32|u64|usize|i8|i16|i32|i64|isize { y => y.to_u32().unwrap_or_else(|| panic!("shift operation overflowed")) };
+                u32 { x => x }
+            > ($name, $cname, $wname, $oname) for $target, "shift operation overflowed"
         }
     }
 }
@@ -28,12 +34,12 @@ macro_rules! forward_assign {
     ($tn:ident($name:ident, $fwd:ident) for $target:ty) => {
         forward_assign!($tn<$target>($name, $fwd) for $target);
     };
-    ($tn:ident<$targ:ty>($name:ident, $fwd:ident) for $target:ty) => {
-        impl $tn<$targ> for $target {
+    ($tn:ident<$($targ:ty)|+>($name:ident, $fwd:ident) for $target:ty) => {
+        $(impl $tn<$targ> for $target {
             fn $name(&mut self, other: $targ) {
                 *self = self.$fwd(other);
             }
-        }
+        })+
     }
 }
 
@@ -41,7 +47,7 @@ macro_rules! forward_impl {
     (
         $tn:ident<
             $arg:ty;
-            $targ:ty { $t:pat if $check:expr => $uncheck_cast:expr };
+            $($targ:ty)|+ { $t:pat => $uncheck_cast:expr };
             $wrarg:ty { $u:pat => $unwrap:expr }
         > ($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty,
         $emsg:expr
@@ -55,13 +61,13 @@ macro_rules! forward_impl {
             }
         }
 
-        impl $tn<$targ> for $target {
+        $(impl $tn<$targ> for $target {
             type Output = Self;
             #[cfg(debug_assertions)]
+            #[allow(unused_comparisons, overflowing_literals)]
             fn $name(self, other: $targ) -> Self {
                 let other = match other {
-                    $t if $check => $uncheck_cast,
-                    _ => panic!($emsg),
+                    $t => $uncheck_cast,
                 };
                 self.$cname(other).unwrap_or_else(|| panic!($emsg))
             }
@@ -69,7 +75,7 @@ macro_rules! forward_impl {
             fn $name(self, other: $targ) -> Self {
                 self.$wname(match other { $t => $uncheck_cast })
             }
-        }
+        })+
 
         impl $tn<$wrarg> for Wrapping<$target> {
             type Output = Self;

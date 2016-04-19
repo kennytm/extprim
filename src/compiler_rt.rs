@@ -33,7 +33,7 @@ mod detail {
 mod detail {
     use u128::{u128, ZERO};
     use std::mem::uninitialized;
-    use std::num::{Int, UnsignedInt};
+    use num_traits::PrimInt;
 
     pub fn udiv128(a: u128, b: u128) -> u128 {
         udivmodti4(a, b, None)

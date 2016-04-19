@@ -486,8 +486,8 @@ impl u128 {
 
 forward_shift!(Shl(shl, checked_shl, wrapping_shl, overflowing_shl) for u128);
 forward_shift!(Shr(shr, checked_shr, wrapping_shr, overflowing_shr) for u128);
-forward_assign!(ShlAssign<usize>(shl_assign, shl) for u128);
-forward_assign!(ShrAssign<usize>(shr_assign, shr) for u128);
+forward_assign!(ShlAssign<u8|u16|u32|u64|usize|i8|i16|i32|i64|isize>(shl_assign, shl) for u128);
+forward_assign!(ShrAssign<u8|u16|u32|u64|usize|i8|i16|i32|i64|isize>(shr_assign, shr) for u128);
 
 #[cfg(test)]
 mod shift_tests {
