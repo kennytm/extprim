@@ -1,0 +1,24 @@
+[package]
+name = "extprim_tests"
+version = "1.0.0"
+authors = ["kennytm <kennytm@gmail.com>"]
+description = "Test case for extprim literals"
+repository = "https://github.com/kennytm/extprim"
+license = "MIT OR Apache-2.0"
+build = "build.rs"
+
+include = [
+    "build.rs",
+    "tests/*.rs",
+    "Cargo.toml",
+]
+
+[dev-dependencies]
+extprim = { path = "../", version = "1.0.0" }
+extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
+
+[build-dependencies]
+syntex = "0.31.0"
+extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
+rustc_version = "0.1.7"
+

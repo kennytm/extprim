@@ -1,10 +1,3 @@
-/*
-
-#![feature(plugin)]
-
-#![plugin(extprim)]
-
-#[allow(plugin_as_library)]
 extern crate extprim;
 
 use extprim::u128::u128;
@@ -66,4 +59,4 @@ fn test_literals_i() {
     assert_eq!(i128::from_parts(4719528808248670532, 1624322789729401538), I7);
 }
 
-*/
+// vim: ft=rust

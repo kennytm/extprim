@@ -1,8 +1,8 @@
 [package]
-name = "extprim"
+name = "extprim_literals"
 version = "1.0.0"
 authors = ["kennytm <kennytm@gmail.com>"]
-description = "Extra primitive types (u128, i128)"
+description = "Plugin for creating extra primitive types literals (u128!(n), i128!(n))"
 repository = "https://github.com/kennytm/extprim"
 license = "MIT OR Apache-2.0"
 keywords = ["primitives","u128","i128"]
@@ -13,14 +13,17 @@ include = [
     "build.rs",
     "src/*.rs",
     "Cargo.toml",
-    "README.md",
-    "LICENSE.txt",
 ]
 
+[lib]
+name = "extprim_literals"
+crate-type = ["dylib"]
+
 [dependencies]
-lazy_static = "0.2.0"
-rand = "0.3.14"
+syntex = "0.31.0"
+syntex_syntax = "0.31.0"
 num-traits = "0.1.32"
+extprim = { path = "../", version = "1.0.0" }
 
 [build-dependencies]
 rustc_version = "0.1.7"
