@@ -53,6 +53,5 @@ script:
     - cargo test --target "$HOST" --manifest-path extprim_tests/Cargo.toml
 
 after_success:
-    - if [ "$HOST" = 'x86_64-unknown-linux-gnu' -a "$TRAVIS_RUST_VERSION" = 'stable' ]; then cargo doc && travis-cargo doc-upload; fi
     - travis-cargo coveralls --no-sudo --verify
 

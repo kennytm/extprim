@@ -9,7 +9,7 @@ build = "build.rs"
 
 include = [
     "build.rs",
-    "tests/*.rs",
+    "tests/*.rs*",
     "Cargo.toml",
 ]
 
