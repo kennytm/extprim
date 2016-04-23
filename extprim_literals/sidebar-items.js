@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["register","Register the `extprim_literals` macros to the `syntex` registry."]],"macro":[["i128!","Creates a signed 128-bit integer at compile time. The content can be any integer literals supported by Rust, e.g."],["u128!","Creates an unsigned 128-bit integer at compile time. The content can be any integer literals supported by Rust, e.g."]]});
