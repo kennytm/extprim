@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/usr/bin/bash
+
+# Generate documentation and commit into the gh-pages branch.
 
 set -euo pipefail
 
@@ -8,11 +10,14 @@ COMMIT=$(git rev-parse HEAD)
 rustup default nightly
 cargo doc --manifest-path extprim_literals/Cargo.toml --features doc_only
 git worktree add doc gh-pages
-mv extprim_literals/target/doc/* doc/
 cd doc
 git rm -r .
 git reset HEAD .gitignore index.html
 git checkout -- .gitignore index.html
+mv ../extprim_literals/target/doc/{extprim,extprim_literals} .
+mv ../extprim_literals/target/doc/*.{txt,woff,js,css} .
+mkdir src
+mv ../extprim_literals/target/doc/src/{extprim,extprim_literals} src
 git add .
 git commit -m "Update doc for ${VERSION} (${COMMIT})"
 cd ..

@@ -1,5 +1,6 @@
 extern crate rustc_version;
 extern crate syntex;
+#[allow(plugin_as_library)]
 extern crate extprim_literals;
 
 use rustc_version::{version_meta, Channel};
