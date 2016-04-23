@@ -6,7 +6,7 @@ description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
 license = "MIT OR Apache-2.0"
 keywords = ["primitives","u128","i128"]
-#documentation = ""
+documentation = "https://kennytm.github.io/extprim/extprim/index.html"
 build = "build.rs"
 
 include = [

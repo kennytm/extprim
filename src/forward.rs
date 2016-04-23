@@ -1,13 +1,20 @@
-//use traits::Wrapping;
-
-#[macro_export]
 macro_rules! forward_symmetric {
-    ($tn:ident($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty) => {
-        forward_symmetric!($tn<$target>($name, $cname, $wname, $oname) for $target);
+    (
+        $(#[$cattr:meta])*
+        impl $tn:ident($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty
+    ) => {
+        forward_symmetric!(
+            $(#[$cattr])*
+            impl $tn<$target>($name, $cname, $wname, $oname) for $target
+        );
     };
-    ($tn:ident<$arg:ty>($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty) => {
+    (
+        $(#[$cattr:meta])*
+        impl $tn:ident<$arg:ty>($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty
+    ) => {
         forward_impl! {
-            $tn<
+            $(#[$cattr])*
+            impl $tn<
                 $arg;
                 $arg { y => y };
                 Wrapping<$arg> { x => x.0 }
@@ -16,11 +23,14 @@ macro_rules! forward_symmetric {
     }
 }
 
-#[macro_export]
 macro_rules! forward_shift {
-    ($tn:ident($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty) => {
+    (
+        $(#[$cattr:meta])*
+        impl $tn:ident($name:ident, $cname:ident, $wname:ident, $oname:ident) for $target:ty
+    ) => {
         forward_impl! {
-            $tn<
+            $(#[$cattr])*
+            impl $tn<
                 u32;
                 u8|u16|u32|u64|usize|i8|i16|i32|i64|isize { y => y.to_u32().unwrap_or_else(|| panic!("shift operation overflowed")) };
                 u32 { x => x }
@@ -29,7 +39,6 @@ macro_rules! forward_shift {
     }
 }
 
-#[macro_export]
 macro_rules! forward_assign {
     ($tn:ident($name:ident, $fwd:ident) for $target:ty) => {
         forward_assign!($tn<$target>($name, $fwd) for $target);
@@ -45,7 +54,8 @@ macro_rules! forward_assign {
 
 macro_rules! forward_impl {
     (
-        $tn:ident<
+        $(#[$cattr:meta])*
+        impl $tn:ident<
             $arg:ty;
             $($targ:ty)|+ { $t:pat => $uncheck_cast:expr };
             $wrarg:ty { $u:pat => $unwrap:expr }
@@ -53,6 +63,7 @@ macro_rules! forward_impl {
         $emsg:expr
     ) => {
         impl $target {
+            $(#[$cattr])*
             pub fn $cname(self, other: $arg) -> Option<$target> {
                 match self.$oname(other) {
                     (v, false) => Some(v),

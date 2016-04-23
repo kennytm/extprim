@@ -1,5 +1,3 @@
-use traits::ToExtraPrimitive;
-
 impl<T: ToPrimitive> ToExtraPrimitive for T {
     default fn to_u128(&self) -> Option<u128> {
         self.to_u64().map(u128::new)
@@ -58,6 +56,4 @@ mod num_cast_tests {
         assert_eq!(None::<i128>, NumCast::from(u128::from_parts(0x8000_0000_0000_0000, 0)));
     }
 }
-
-
 

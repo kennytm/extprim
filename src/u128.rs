@@ -14,7 +14,7 @@ use num_traits::*;
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 use error;
-use traits::{Wrapping, ToExtraPrimitive};
+use traits::{Wrapping, ToExtraPrimitive, pow};
 
 //{{{ Structure
 
@@ -27,8 +27,7 @@ pub const BYTES: usize = 16;
 /// The smallest unsigned 128-bit integer (0).
 pub const MIN: u128 = u128 { lo: 0, hi: 0 };
 
-/// The largest unsigned 128-bit integer
-/// (`340_282_366_920_938_463_463_374_607_431_768_211_455`).
+/// The largest unsigned 128-bit integer (`340_282_366_920_938_463_463_374_607_431_768_211_455`).
 pub const MAX: u128 = u128 { lo: u64::MAX, hi: u64::MAX };
 
 /// The constant 0.
@@ -46,44 +45,82 @@ pub struct u128 {
 
     /// The lower 64-bit of the number.
     #[doc(hidden)]
+    #[cfg(target_endian="little")]
     pub lo: u64,
 
     /// The higher 64-bit of the number.
     #[doc(hidden)]
     pub hi: u64,
+
+    /// The lower 64-bit of the number.
+    #[doc(hidden)]
+    #[cfg(target_endian="big")]
+    pub lo: u64,
 }
 
 impl u128 {
     /// Constructs a new 128-bit integer from a 64-bit integer.
-
     pub fn new(lo: u64) -> u128 {
         u128 { lo: lo, hi: 0 }
     }
 
-    /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit
-    /// parts.
+    /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
     ///
-    /// ```
+    /// The new integer can be considered as `hi * 2**64 + lo`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
     /// use extprim::u128::u128;
+    ///
     /// let number = u128::from_parts(6692605942, 14083847773837265618);
     /// assert_eq!(format!("{}", number), "123456789012345678901234567890");
     /// ```
-
     pub fn from_parts(hi: u64, lo: u64) -> u128 {
         u128 { lo: lo, hi: hi }
     }
 
     /// Fetch the lower-64-bit of the number.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let number = u128::from_str_radix("ffd1390a0adc2fb8dabbb8174d95c99b", 16).unwrap();
+    /// assert_eq!(number.low64(), 0xdabbb8174d95c99b);
+    /// ```
     pub fn low64(self) -> u64 {
         self.lo
     }
 
     /// Fetch the higher-64-bit of the number.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let number = u128::from_str_radix("ffd1390a0adc2fb8dabbb8174d95c99b", 16).unwrap();
+    /// assert_eq!(number.high64(), 0xffd1390a0adc2fb8);
+    /// ```
     pub fn high64(self) -> u64 {
         self.hi
     }
 
-    /// Convert this number to signed without checking.
+    /// Convert this number to signed with wrapping.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    /// use extprim::i128::i128;
+    ///
+    /// let a = u128::from_str_radix( "ffd1390a0adc2fb8dabbb8174d95c99b", 16).unwrap();
+    /// let b = i128::from_str_radix("-002ec6f5f523d047254447e8b26a3665", 16).unwrap();
+    /// assert_eq!(a.as_i128(), b);
+    /// assert_eq!(b.as_u128(), a);
+    /// ```
     pub fn as_i128(self) -> i128 {
         i128::from_parts(self.hi as i64, self.lo)
     }
@@ -105,8 +142,17 @@ impl Rand for u128 {
 //{{{ Add, Sub
 
 impl u128 {
-    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at
-    /// the boundary of the type.
+    /// Wrapping (modular) addition. Computes `self + other`, wrapping around at the boundary of
+    /// the type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(5).wrapping_add(u128::new(6)), u128::new(11));
+    /// assert_eq!(u128::max_value().wrapping_add(u128::one()), u128::zero());
+    /// ```
     pub fn wrapping_add(self, other: u128) -> u128 {
         let (lo, carry) = self.lo.overflowing_add(other.lo);
         let hi = self.hi.wrapping_add(other.hi);
@@ -114,8 +160,17 @@ impl u128 {
         u128::from_parts(hi, lo)
     }
 
-    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around
-    /// at the boundary of the type.
+    /// Wrapping (modular) subtraction. Computes `self - other`, wrapping around at the boundary of
+    /// the type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).wrapping_sub(u128::new(5)), u128::one());
+    /// assert_eq!(u128::new(5).wrapping_sub(u128::new(6)), u128::max_value());
+    /// ```
     pub fn wrapping_sub(self, other: u128) -> u128 {
         let (lo, borrow) = self.lo.overflowing_sub(other.lo);
         let hi = self.hi.wrapping_sub(other.hi);
@@ -125,9 +180,18 @@ impl u128 {
 
     /// Calculates `self + other`.
     ///
-    /// Returns a tuple of the addition along with a boolean indicating whether
-    /// an arithmetic overflow would occur. If an overflow would have occurred
-    /// then the wrapped value is returned.
+    /// Returns a tuple of the addition along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is
+    /// returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).overflowing_add(u128::new(13)), (u128::new(19), false));
+    /// assert_eq!(u128::max_value().overflowing_add(u128::one()), (u128::zero(), true));
+    /// ```
     pub fn overflowing_add(self, other: u128) -> (u128, bool) {
         let (lo, lo_carry) = self.lo.overflowing_add(other.lo);
         let (hi, hi_carry_1) = self.hi.overflowing_add(if lo_carry { 1 } else { 0 });
@@ -137,9 +201,18 @@ impl u128 {
 
     /// Calculates `self - other`.
     ///
-    /// Returns a tuple of the subtraction along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the subtraction along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is
+    /// returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).overflowing_sub(u128::new(5)), (u128::one(), false));
+    /// assert_eq!(u128::new(5).overflowing_sub(u128::new(6)), (u128::max_value(), true));
+    /// ```
     pub fn overflowing_sub(self, other: u128) -> (u128, bool) {
         let (lo, lo_borrow) = self.lo.overflowing_sub(other.lo);
         let (hi, hi_borrow_1) = self.hi.overflowing_sub(if lo_borrow { 1 } else { 0 });
@@ -147,18 +220,35 @@ impl u128 {
         (u128::from_parts(hi, lo), hi_borrow_1 || hi_borrow_2)
     }
 
-    /// Saturating integer addition.
+    /// Saturating integer addition. Computes `self + other`, saturating at the numeric bounds
+    /// instead of overflowing.
     ///
-    /// Computes `self + other`, saturating at the numeric bounds instead of
-    /// overflowing.
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(13).saturating_add(u128::new(7)), u128::new(20));
+    ///
+    /// let huge_num = u128::from_str_radix("ccccccccbbbbbbbbaaaaaaaa99999999", 16).unwrap();
+    /// let also_big = u128::from_str_radix("5566778899aabbccddeeff0011223344", 16).unwrap();
+    /// assert_eq!(huge_num.saturating_add(also_big), u128::max_value());
+    /// ```
     pub fn saturating_add(self, other: u128) -> u128 {
         self.checked_add(other).unwrap_or(MAX)
     }
 
-    /// Saturating integer subtraction.
+    /// Saturating integer subtraction. Computes `self - other`, saturating at the numeric bounds
+    /// instead of overflowing.
     ///
-    /// Computes `self - other`, saturating at the numeric bounds instead of
-    /// overflowing.
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(91).saturating_sub(u128::new(13)), u128::new(78));
+    /// assert_eq!(u128::new(13).saturating_sub(u128::new(91)), u128::zero());
+    /// ```
     pub fn saturating_sub(self, other: u128) -> u128 {
         if self <= other {
             ZERO
@@ -167,15 +257,54 @@ impl u128 {
         }
     }
 
-    /// Computes `!self + 1`, i.e. the negation of itself when viewed as a
-    /// signed integer.
+    /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary of the type.
+    ///
+    /// Since unsigned types do not have negative equivalents all applications of this function
+    /// will wrap (except for `-0`). For values smaller than the corresponding signed type's
+    /// maximum the result is the same as casting the corresponding signed value. Any larger values
+    /// are equivalent to `MAX + 1 - (val - MAX - 1)`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::zero().wrapping_neg(), u128::zero());
+    /// assert_eq!(u128::one().wrapping_neg(), u128::max_value());
+    /// assert_eq!(u128::max_value().wrapping_neg(), u128::one());
+    /// ```
     pub fn wrapping_neg(self) -> u128 {
         ONE.wrapping_add(!self)
     }
 }
 
-forward_symmetric!(Add(add, checked_add, wrapping_add, overflowing_add) for u128);
-forward_symmetric!(Sub(sub, checked_sub, wrapping_sub, overflowing_sub) for u128);
+forward_symmetric! {
+    /// Checked integer addition. Computes `self + other`, returning `None` if overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(5).checked_add(u128::new(8)), Some(u128::new(13)));
+    /// assert_eq!(u128::max_value().checked_add(u128::max_value()), None);
+    /// ```
+    impl Add(add, checked_add, wrapping_add, overflowing_add) for u128
+}
+forward_symmetric! {
+    /// Checked integer subtraction. Computes `self - other`, returning `None` if underflow
+    /// occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(8).checked_sub(u128::new(5)), Some(u128::new(3)));
+    /// assert_eq!(u128::new(5).checked_sub(u128::new(8)), None);
+    /// ```
+    impl Sub(sub, checked_sub, wrapping_sub, overflowing_sub) for u128
+}
 forward_assign!(AddAssign(add_assign, add) for u128);
 forward_assign!(SubAssign(sub_assign, sub) for u128);
 
@@ -438,6 +567,16 @@ mod bitwise_tests {
 
 impl u128 {
     /// Panic-free bitwise shift-left; yields `self << (shift % 128)`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(7).wrapping_shl(66), u128::from_parts(28, 0));
+    /// assert_eq!(u128::new(7).wrapping_shl(128), u128::new(7));
+    /// assert_eq!(u128::new(7).wrapping_shl(129), u128::new(14));
+    /// ```
     pub fn wrapping_shl(self, shift: u32) ->  u128 {
         let lo = self.lo;
         let hi = self.hi;
@@ -457,6 +596,16 @@ impl u128 {
     }
 
     /// Panic-free bitwsie shift-right; yields `self >> (shift % 128)`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::max_value().wrapping_shr(66), u128::new(0x3fffffffffffffff));
+    /// assert_eq!(u128::new(7).wrapping_shr(128), u128::new(7));
+    /// assert_eq!(u128::new(7).wrapping_shr(129), u128::new(3));
+    /// ```
     pub fn wrapping_shr(self, shift: u32) -> u128 {
         let lo = self.lo;
         let hi = self.hi;
@@ -475,17 +624,75 @@ impl u128 {
         u128::from_parts(hi, lo)
     }
 
+    /// Shifts `self` left by `other` bits.
+    ///
+    /// Returns a tuple of the shifted version of `self` along with a boolean indicating whether
+    /// the shift value was larger than or equal to the number of bits (128). If the shift value is
+    /// too large, then value is masked by `0x7f`, and this value is then used to perform the shift.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(7).overflowing_shl(66), (u128::from_parts(28, 0), false));
+    /// assert_eq!(u128::new(7).overflowing_shl(128), (u128::new(7), true));
+    /// assert_eq!(u128::new(7).overflowing_shl(129), (u128::new(14), true));
+    /// ```
     pub fn overflowing_shl(self, other: u32) -> (u128, bool) {
         (self.wrapping_shl(other), other >= 128)
     }
 
+    /// Shifts `self` right by `other` bits.
+    ///
+    /// Returns a tuple of the shifted version of `self` along with a boolean indicating whether
+    /// the shift value was larger than or equal to the number of bits (128). If the shift value is
+    /// too large, then value is masked by `0x7f`, and this value is then used to perform the shift.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::max_value().overflowing_shr(66), (u128::new(0x3fffffffffffffff), false));
+    /// assert_eq!(u128::new(7).overflowing_shr(128), (u128::new(7), true));
+    /// assert_eq!(u128::new(7).overflowing_shr(129), (u128::new(3), true));
+    /// ```
     pub fn overflowing_shr(self, other: u32) -> (u128, bool) {
         (self.wrapping_shr(other), other >= 128)
     }
 }
 
-forward_shift!(Shl(shl, checked_shl, wrapping_shl, overflowing_shl) for u128);
-forward_shift!(Shr(shr, checked_shr, wrapping_shr, overflowing_shr) for u128);
+forward_shift! {
+    /// Checked shift left. Computes `self << other`, returning `None` if the shift is larger than
+    /// or equal to the number of bits in `self` (128).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(7).checked_shl(66), Some(u128::from_parts(28, 0)));
+    /// assert_eq!(u128::new(7).checked_shl(128), None);
+    /// assert_eq!(u128::new(7).checked_shl(129), None);
+    /// ```
+    impl Shl(shl, checked_shl, wrapping_shl, overflowing_shl) for u128
+}
+forward_shift! {
+    /// Checked shift right. Computes `self >> other`, returning `None` if the shift is larger than
+    /// or equal to the number of bits in `self` (128).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::max_value().checked_shr(66), Some(u128::new(0x3fffffffffffffff)));
+    /// assert_eq!(u128::new(7).checked_shr(128), None);
+    /// assert_eq!(u128::new(7).checked_shr(129), None);
+    /// ```
+    impl Shr(shr, checked_shr, wrapping_shr, overflowing_shr) for u128
+}
 forward_assign!(ShlAssign<u8|u16|u32|u64|usize|i8|i16|i32|i64|isize>(shl_assign, shl) for u128);
 forward_assign!(ShrAssign<u8|u16|u32|u64|usize|i8|i16|i32|i64|isize>(shr_assign, shr) for u128);
 
@@ -632,8 +839,20 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
 }
 
 impl u128 {
-    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping
-    /// around at the boundary of the type.
+    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping around at the boundary
+    /// of the type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).wrapping_mul(u128::new(9)), u128::new(54));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// let b = u128::max_value() - u128::new(4);
+    /// assert_eq!(a.wrapping_mul(b), u128::new(15));
+    /// ```
     pub fn wrapping_mul(self, other: u128) -> u128 {
         let a = self.hi;
         let b = self.lo;
@@ -648,9 +867,20 @@ impl u128 {
 
     /// Calculates the multiplication of `self` and `other`.
     ///
-    /// Returns a tuple of the multiplication along with a boolean indicating
-    /// whether an arithmetic overflow would occur. If an overflow would have
-    /// occurred then the wrapped value is returned.
+    /// Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).overflowing_mul(u128::new(9)), (u128::new(54), false));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// let b = u128::max_value() - u128::new(4);
+    /// assert_eq!(a.overflowing_mul(b), (u128::new(15), true));
+    /// ```
     pub fn overflowing_mul(self, other: u128) -> (u128, bool) {
         let a = self.hi;
         let b = self.lo;
@@ -670,20 +900,58 @@ impl u128 {
         (low, hi_overflow_mul || hi_overflow_add)
     }
 
-    /// Saturating integer multiplication. Computes `self * other`, saturating
-    /// at the numeric bounds instead of overflowing.
+    /// Saturating integer multiplication. Computes `self * other`, saturating at the numeric
+    /// bounds instead of overflowing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).saturating_mul(u128::new(9)), u128::new(54));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// let b = u128::max_value() - u128::new(4);
+    /// assert_eq!(a.saturating_mul(b), u128::max_value());
+    /// ```
     pub fn saturating_mul(self, other: u128) -> u128 {
         self.checked_mul(other).unwrap_or(MAX)
     }
 
-    /// Wrapping (modular) multiplication. Computes `self * other`, wrapping
+    /// Wrapping (modular) multiplication with a 64-bit number. Computes `self * other`, wrapping
     /// around at the boundary of the type.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).wrapping_mul_64(9), u128::new(54));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// assert_eq!(a.wrapping_mul_64(7), u128::max_value() - u128::new(20));
+    /// ```
     pub fn wrapping_mul_64(self, other: u64) -> u128 {
         let mut low = u64_long_mul(self.lo, other);
         low.hi = low.hi.wrapping_add(self.hi.wrapping_mul(other));
         low
     }
 
+    /// Calculates the multiplication of `self` and `other` with a 64-bit number.
+    ///
+    /// Returns a tuple of the multiplication along with a boolean indicating whether an arithmetic
+    /// overflow would occur. If an overflow would have occurred then the wrapped value is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).overflowing_mul_64(9), (u128::new(54), false));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// assert_eq!(a.overflowing_mul_64(7), (u128::max_value() - u128::new(20), true));
+    /// ```
     pub fn overflowing_mul_64(self, other: u64) -> (u128, bool) {
         let mut low = u64_long_mul(self.lo, other);
         let (hi, hi_overflow_mul) = self.hi.overflowing_mul(other);
@@ -692,13 +960,57 @@ impl u128 {
         (low, hi_overflow_mul || hi_overflow_add)
     }
 
+    /// Saturating integer multiplication with a 64-bit number. Computes `self * other`, saturating
+    /// at the numeric bounds instead of overflowing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).saturating_mul_64(9), u128::new(54));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// assert_eq!(a.saturating_mul_64(7), u128::max_value());
+    /// ```
     pub fn saturating_mul_64(self, other: u64) -> u128 {
         self.checked_mul_64(other).unwrap_or(MAX)
     }
 }
 
-forward_symmetric!(Mul(mul, checked_mul, wrapping_mul, overflowing_mul) for u128);
-forward_symmetric!(Mul<u64>(mul, checked_mul_64, wrapping_mul_64, overflowing_mul_64) for u128);
+forward_symmetric!(
+    /// Checked integer multiplication. Computes `self * other`, returning `None` if underflow or
+    /// overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).checked_mul(u128::new(9)), Some(u128::new(54)));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// let b = u128::max_value() - u128::new(4);
+    /// assert_eq!(a.checked_mul(b), None);
+    /// ```
+    impl Mul(mul, checked_mul, wrapping_mul, overflowing_mul) for u128
+);
+forward_symmetric!(
+    /// Checked integer multiplication with a 64-bit number. Computes `self * other`, returning
+    /// `None` if underflow or overflow occurred.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(6).checked_mul_64(9), Some(u128::new(54)));
+    ///
+    /// let a = u128::max_value() - u128::new(2);
+    /// assert_eq!(a.checked_mul_64(7), None);
+    /// ```
+    impl Mul<u64>(mul, checked_mul_64, wrapping_mul_64, overflowing_mul_64) for u128
+);
 forward_assign!(MulAssign(mul_assign, mul) for u128);
 forward_assign!(MulAssign<u64>(mul_assign, mul) for u128);
 
@@ -900,19 +1212,42 @@ mod mul_bench {
 //{{{ Div, Rem
 
 impl u128 {
-    /// Wrapping (modular) division. Computes `self / other`. Wrapped division
-    /// on unsigned types is just normal division. There's no way wrapping could
-    /// ever happen. This function exists, so that all operations are accounted
-    /// for in the wrapping operations.
+    /// Wrapping (modular) division. Computes `self / other`. Wrapped division on unsigned types is
+    /// just normal division. There's no way wrapping could ever happen. This function exists, so
+    /// that all operations are accounted for in the wrapping operations.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `other` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).wrapping_div(u128::new(8)), u128::new(12));
+    /// ```
     pub fn wrapping_div(self, other: u128) -> u128 {
         self.checked_div(other)
             .unwrap_or_else(|| panic!("attempted to divide by zero"))
     }
 
-    /// Wrapping (modular) remainder. Computes `self % other`. Wrapped remainder
-    /// calculation on unsigned types is just the regular remainder calculation.
-    /// There's no way wrapping could ever happen. This function exists, so that
-    /// all operations are accounted for in the wrapping operations.
+    /// Wrapping (modular) remainder. Computes `self % other`. Wrapped remainder calculation on
+    /// unsigned types is just the regular remainder calculation. There's no way wrapping could
+    /// ever happen. This function exists, so that all operations are accounted for in the wrapping
+    /// operations.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `other` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).wrapping_rem(u128::new(8)), u128::new(4));
+    /// ```
     pub fn wrapping_rem(self, other: u128) -> u128 {
         self.checked_rem(other)
             .unwrap_or_else(|| panic!("attempted remainder with a divisor of zero"))
@@ -923,6 +1258,18 @@ impl u128 {
     /// Returns a tuple of the divisor along with a boolean indicating whether
     /// an arithmetic overflow would occur. Note that for unsigned integers
     /// overflow never occurs, so the second value is always `false`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `other` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).overflowing_div(u128::new(8)), (u128::new(12), false));
+    /// ```
     pub fn overflowing_div(self, other: u128) -> (u128, bool) {
         (self.wrapping_div(other), false)
     }
@@ -932,12 +1279,32 @@ impl u128 {
     /// Returns a tuple of the remainder along with a boolean indicating whether
     /// an arithmetic overflow would occur. Note that for unsigned integers
     /// overflow never occurs, so the second value is always `false`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if `other` is 0.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).overflowing_rem(u128::new(8)), (u128::new(4), false));
+    /// ```
     pub fn overflowing_rem(self, other: u128) -> (u128, bool) {
         (self.wrapping_rem(other), false)
     }
 
-    /// Checked integer division. Computes `self / other`, returning `None` if
-    /// `other == 0`.
+    /// Checked integer division. Computes `self / other`, returning `None` if `other == 0`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).checked_div(u128::new(8)), Some(u128::new(12)));
+    /// assert_eq!(u128::new(100).checked_div(u128::zero()), None);
+    /// ```
     pub fn checked_div(self, other: u128) -> Option<u128> {
         if other == ZERO {
             None
@@ -946,8 +1313,16 @@ impl u128 {
         }
     }
 
-    /// Checked integer remainder. Computes `self % other`, returning `None` if
-    /// `other == 0`.
+    /// Checked integer remainder. Computes `self % other`, returning `None` if `other == 0`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::new(100).checked_rem(u128::new(8)), Some(u128::new(4)));
+    /// assert_eq!(u128::new(100).checked_rem(u128::zero()), None);
+    /// ```
     pub fn checked_rem(self, other: u128) -> Option<u128> {
         if other == ZERO {
             None
@@ -996,8 +1371,20 @@ impl CheckedDiv for u128 {
 
 /// Computes the divisor and remainder simultaneously. Returns `(a/b, a%b)`.
 ///
-/// Panics if the denominator is zero. Unlike the primitive types, calling this
-/// is likely faster than calling `a/b` and `a%b` separately.
+/// Unlike the primitive types, calling this is likely faster than calling `a/b` and `a%b`
+/// separately.
+///
+/// # Panics
+///
+/// This function will panic if `denominator` is 0.
+///
+/// # Examples
+///
+/// ```rust
+/// use extprim::u128::{div_rem, u128};
+///
+/// assert_eq!(div_rem(u128::new(100), u128::new(8)), (u128::new(12), u128::new(4)));
+/// ```
 pub fn div_rem(numerator: u128, denominator: u128) -> (u128, u128) {
     if denominator == ZERO {
         panic!("attempted to divide by zero");
@@ -1061,6 +1448,16 @@ mod div_rem_tests {
 
 //{{{ Casting
 
+#[cfg(extprim_channel="stable")]
+fn ldexp(base: f64, exp: u32) -> f64 {
+    base * (exp as f64).exp2()
+}
+
+#[cfg(extprim_channel="unstable")]
+fn ldexp(base: f64, exp: u32) -> f64 {
+    f64::ldexp(base, exp as isize)
+}
+
 impl ToPrimitive for u128 {
     fn to_i64(&self) -> Option<i64> {
         if self.hi != 0 {
@@ -1077,15 +1474,29 @@ impl ToPrimitive for u128 {
             Some(self.lo)
         }
     }
+
+    fn to_f64(&self) -> Option<f64> {
+        if self.hi != 0 {
+            let shift_size = 64 - self.hi.leading_zeros();
+            let truncated = (*self >> shift_size).lo as f64;
+            Some(ldexp(truncated, shift_size))
+        } else {
+            self.lo.to_f64()
+        }
+    }
 }
 
 impl FromPrimitive for u128 {
     fn from_u64(n: u64) -> Option<u128> {
-        Some(u128::new(n))
+        n.to_u128()
     }
 
     fn from_i64(n: i64) -> Option<u128> {
-        n.to_u64().map(u128::new)
+        n.to_u128()
+    }
+
+    fn from_f64(n: f64) -> Option<u128> {
+        n.to_u128()
     }
 }
 
@@ -1127,50 +1538,100 @@ impl From<u64> for u128 {
     }
 }
 
+#[cfg(test)]
+mod conv_tests {
+    use u128::{u128, MAX};
+    use num_traits::ToPrimitive;
+
+    #[test]
+    fn test_u128_to_f64() {
+        assert_eq!(u128::new(0).to_f64(), Some(0.0f64));
+        assert_eq!(u128::new(1).to_f64(), Some(1.0f64));
+        assert_eq!(u128::new(2).to_f64(), Some(2.0f64));
+        assert_eq!(MAX.to_f64(), Some(340282366920938463463374607431768211455.0f64));
+    }
+}
+
 //}}}
 
 //{{{ Constants
 
-impl Bounded for u128 {
-    fn min_value() -> Self {
-        MIN
-    }
+impl u128 {
+    /// Returns the smallest unsigned 128-bit integer (0).
+    pub fn min_value() -> u128 { MIN }
 
-    fn max_value() -> Self {
-        MAX
-    }
+    /// Returns the largest unsigned 128-bit integer
+    /// (`340_282_366_920_938_463_463_374_607_431_768_211_455`).
+    pub fn max_value() -> u128 { MAX }
+
+    /// Returns the constant 0.
+    pub fn zero() -> u128 { ZERO }
+
+    /// Returns the constant 1.
+    pub fn one() -> u128 { ONE }
+}
+
+impl Bounded for u128 {
+    fn min_value() -> Self { MIN }
+    fn max_value() -> Self { MAX }
 }
 
 impl Zero for u128 {
-    fn zero() -> Self {
-        ZERO
-    }
-
-    fn is_zero(&self) -> bool {
-        *self == ZERO
-    }
+    fn zero() -> Self { ZERO }
+    fn is_zero(&self) -> bool { *self == ZERO }
 }
 
 impl One for u128 {
-    fn one() -> Self {
-        ONE
-    }
+    fn one() -> Self { ONE }
 }
 
 //}}}
 
 //{{{ PrimInt
 
-impl PrimInt for u128 {
-    fn count_ones(self) -> u32 {
+impl u128 {
+    /// Returns the number of ones in the binary representation of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let n = u128::from_str_radix("6f32f1ef8b18a2bc3cea59789c79d441", 16).unwrap();
+    /// assert_eq!(n.count_ones(), 67);
+    /// ```
+    pub fn count_ones(self) -> u32 {
         self.lo.count_ones() + self.hi.count_ones()
     }
 
-    fn count_zeros(self) -> u32 {
+    /// Returns the number of zeros in the binary representation of `self` (including leading zeros).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let n = u128::from_str_radix("6f32f1ef8b18a2bc3cea59789c79d441", 16).unwrap();
+    /// assert_eq!(n.count_zeros(), 61);
+    /// ```
+    pub fn count_zeros(self) -> u32 {
         self.lo.count_zeros() + self.hi.count_zeros()
     }
 
-    fn leading_zeros(self) -> u32 {
+    /// Returns the number of leading zeros in the binary representation of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::zero().leading_zeros(), 128);
+    /// assert_eq!(u128::one().leading_zeros(), 127);
+    /// assert_eq!(u128::max_value().leading_zeros(), 0);
+    /// assert_eq!((u128::one() << 24u32).leading_zeros(), 103);
+    /// assert_eq!((u128::one() << 124u32).leading_zeros(), 3);
+    /// ```
+    pub fn leading_zeros(self) -> u32 {
         if self.hi == 0 {
             64 + self.lo.leading_zeros()
         } else {
@@ -1178,7 +1639,19 @@ impl PrimInt for u128 {
         }
     }
 
-    fn trailing_zeros(self) -> u32 {
+    /// Returns the number of trailing zeros in the binary representation of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::zero().trailing_zeros(), 128);
+    /// assert_eq!(u128::one().trailing_zeros(), 0);
+    /// assert_eq!((u128::one() << 24u32).trailing_zeros(), 24);
+    /// assert_eq!((u128::one() << 124u32).trailing_zeros(), 124);
+    /// ```
+    pub fn trailing_zeros(self) -> u32 {
         if self.lo == 0 {
             64 + self.hi.trailing_zeros()
         } else {
@@ -1186,7 +1659,19 @@ impl PrimInt for u128 {
         }
     }
 
-    fn rotate_left(self, shift: u32) -> Self {
+    /// Shifts the bits to the left by a specified amount, `shift`, wrapping the truncated bits to
+    /// the end of the resulting integer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let a = u128::from_str_radix("d0cf4b50cfe20765fff4b4e3f741cf6d", 16).unwrap();
+    /// let b = u128::from_str_radix("19e96a19fc40ecbffe969c7ee839edba", 16).unwrap();
+    /// assert_eq!(a.rotate_left(5), b);
+    /// ```
+    pub fn rotate_left(self, shift: u32) -> Self {
         let rotated = match shift & 63 {
             0 => self,
             n => u128 {
@@ -1201,13 +1686,162 @@ impl PrimInt for u128 {
         }
     }
 
-    fn rotate_right(self, shift: u32) -> Self {
+    /// Shifts the bits to the right by a specified amount, `shift`, wrapping the truncated bits to
+    /// the beginning of the resulting integer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let a = u128::from_str_radix("d0cf4b50cfe20765fff4b4e3f741cf6d", 16).unwrap();
+    /// let b = u128::from_str_radix("6e867a5a867f103b2fffa5a71fba0e7b", 16).unwrap();
+    /// assert_eq!(a.rotate_right(5), b);
+    /// ```
+    pub fn rotate_right(self, shift: u32) -> Self {
         self.rotate_left(128u32.wrapping_sub(shift))
     }
 
-    fn swap_bytes(self) -> Self {
+    /// Reverses the byte order of the integer.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let a = u128::from_str_radix("0123456789abcdef1112223334445556", 16).unwrap();
+    /// let b = u128::from_str_radix("5655443433221211efcdab8967452301", 16).unwrap();
+    /// assert_eq!(a.swap_bytes(), b);
+    /// ```
+    pub fn swap_bytes(self) -> Self {
         u128 { lo: self.hi.swap_bytes(), hi: self.lo.swap_bytes() }
     }
+
+    /// Converts an integer from big endian to the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    pub fn from_be(x: Self) -> Self {
+        if cfg!(target_endian="big") {
+            x
+        } else {
+            x.swap_bytes()
+        }
+    }
+
+    /// Converts an integer from little endian to the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    pub fn from_le(x: Self) -> Self {
+        if cfg!(target_endian="little") {
+            x
+        } else {
+            x.swap_bytes()
+        }
+    }
+
+    /// Converts `self` to big endian from the target's endianness.
+    ///
+    /// On big endian this is a no-op. On little endian the bytes are swapped.
+    pub fn to_be(self) -> Self {
+        Self::from_be(self)
+    }
+
+    /// Converts self to little endian from the target's endianness.
+    ///
+    /// On little endian this is a no-op. On big endian the bytes are swapped.
+    pub fn to_le(self) -> Self {
+        Self::from_le(self)
+    }
+
+    /// Raises `self` to the power of `exp`, using exponentiation by squaring.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use extprim::u128::u128;
+    /// use std::str::FromStr;
+    ///
+    /// assert_eq!(u128::new(5).pow(30), u128::from_str("931322574615478515625").unwrap());
+    /// ```
+    pub fn pow(self, exp: u32) -> Self {
+        pow(self, exp)
+    }
+
+    /// Returns `true` if and only if `self == 2**k` for some `k`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use extprim::u128::u128;
+    ///
+    /// assert!(!u128::new(0).is_power_of_two());
+    /// assert!( u128::new(1).is_power_of_two());
+    /// assert!( u128::new(2).is_power_of_two());
+    /// assert!(!u128::new(3).is_power_of_two());
+    /// ```
+    pub fn is_power_of_two(self) -> bool {
+        self != ZERO && (self & self.wrapping_sub(ONE)) == ZERO
+    }
+
+    /// Returns the smallest power of two greater than or equal to `self`. Unspecified behavior on
+    /// overflow.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::zero().next_power_of_two(), u128::new(1));
+    /// assert_eq!(u128::one().next_power_of_two(), u128::new(1));
+    /// assert_eq!(u128::new(384).next_power_of_two(), u128::new(512));
+    /// assert_eq!(u128::new(0x80000000_00000001).next_power_of_two(), u128::from_parts(1, 0));
+    /// assert_eq!(u128::from_parts(0x80000000_00000000, 0).next_power_of_two(), u128::from_parts(0x80000000_00000000, 0));
+    /// ```
+    pub fn next_power_of_two(self) -> Self {
+        let leading_zeros = self.wrapping_sub(ONE).leading_zeros();
+        ONE.wrapping_shl(128 - leading_zeros)
+    }
+
+    /// Returns the smallest power of two greater than or equal to `self`. If the next power of two
+    /// is greater than the type's maximum value, `None` is returned, otherwise the power of two is
+    /// wrapped in `Some`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use extprim::u128::u128;
+    ///
+    /// assert_eq!(u128::zero().checked_next_power_of_two(), Some(u128::new(1)));
+    /// assert_eq!(u128::one().checked_next_power_of_two(), Some(u128::new(1)));
+    /// assert_eq!(u128::new(384).checked_next_power_of_two(), Some(u128::new(512)));
+    /// assert_eq!(u128::new(0x80000000_00000001).checked_next_power_of_two(), Some(u128::from_parts(1, 0)));
+    /// assert_eq!(u128::from_parts(0x80000000_00000000, 0).checked_next_power_of_two(), Some(u128::from_parts(0x80000000_00000000, 0)));
+    /// assert_eq!(u128::from_parts(0x80000000_00000000, 1).checked_next_power_of_two(), None);
+    /// assert_eq!(u128::max_value().checked_next_power_of_two(), None);
+    /// ```
+    pub fn checked_next_power_of_two(self) -> Option<Self> {
+        if self == ZERO {
+            Some(ONE)
+        } else {
+            let leading_zeros = self.wrapping_sub(ONE).leading_zeros();
+            ONE.checked_shl(128 - leading_zeros)
+        }
+    }
+}
+
+impl PrimInt for u128 {
+    fn count_ones(self) -> u32 { Self::count_ones(self) }
+    fn count_zeros(self) -> u32 { Self::count_zeros(self) }
+    fn leading_zeros(self) -> u32 { Self::leading_zeros(self) }
+    fn trailing_zeros(self) -> u32 { Self::trailing_zeros(self) }
+    fn rotate_left(self, shift: u32) -> Self { Self::rotate_left(self, shift) }
+    fn rotate_right(self, shift: u32) -> Self { Self::rotate_right(self, shift) }
+    fn swap_bytes(self) -> Self { Self::swap_bytes(self) }
+    fn from_be(x: Self) -> Self { Self::from_be(x) }
+    fn from_le(x: Self) -> Self { Self::from_le(x) }
+    fn to_be(self) -> Self { Self::to_be(self) }
+    fn to_le(self) -> Self { Self::to_le(self) }
+    fn pow(self, exp: u32) -> Self { Self::pow(self, exp) }
 
     fn signed_shl(self, shift: u32) -> Self {
         self << (shift as usize)
@@ -1223,48 +1857,6 @@ impl PrimInt for u128 {
 
     fn unsigned_shr(self, shift: u32) -> Self {
         self >> (shift as usize)
-    }
-
-    fn from_be(x: Self) -> Self {
-        if cfg!(target_endian="big") {
-            x
-        } else {
-            x.swap_bytes()
-        }
-    }
-
-    fn from_le(x: Self) -> Self {
-        if cfg!(target_endian="little") {
-            x
-        } else {
-            x.swap_bytes()
-        }
-    }
-
-    fn to_be(self) -> Self {
-        PrimInt::from_be(self)
-    }
-
-    fn to_le(self) -> Self {
-        PrimInt::from_le(self)
-    }
-
-    fn pow(self, mut exp: u32) -> Self {
-        let mut base = self;
-        let mut acc = ONE;
-
-        while exp > 1 {
-            if (exp & 1) == 1 {
-                acc *= base;
-            }
-            exp /= 2;
-            base *= base;
-        }
-
-        if exp == 1 {
-            acc *= base;
-        }
-        acc
     }
 }
 
@@ -1356,6 +1948,25 @@ mod prim_int_tests {
         assert_eq!(None, ONE.checked_div(ZERO));
         assert_eq!(None, MAX.checked_div(ZERO));
     }
+
+    #[test]
+    fn test_checked_next_power_of_two() {
+        assert_eq!(u128::from_parts(0, 0x80000000_00000000).next_power_of_two(),
+                    u128::from_parts(0, 0x80000000_00000000));
+        assert_eq!(u128::from_parts(0, 0x80000000_00000001).next_power_of_two(),
+                    u128::from_parts(1, 0));
+        assert_eq!(u128::from_parts(1, 0).next_power_of_two(),
+                    u128::from_parts(1, 0));
+        assert_eq!(u128::from_parts(1, 1).next_power_of_two(),
+                    u128::from_parts(2, 0));
+        assert_eq!(u128::from_parts(0x80000000_00000000, 0).checked_next_power_of_two(),
+                    Some(u128::from_parts(0x80000000_00000000, 0)));
+        assert_eq!(u128::from_parts(0x80000000_00000000, 1).checked_next_power_of_two(),
+                    None);
+        assert_eq!(u128::from_parts(0x80000000_00000001, 0).checked_next_power_of_two(),
+                    None);
+
+    }
 }
 
 #[cfg(all(test, extprim_channel="unstable"))]
@@ -1415,6 +2026,19 @@ mod checked_add_sub_bench {
 //{{{ FromStr, FromStrRadix
 
 impl u128 {
+    /// Converts a string slice in a given base to an integer.
+    ///
+    /// Leading and trailing whitespace represent an error.
+    ///
+    /// # Arguments
+    ///
+    /// - src: A string slice
+    /// - radix: The base to use. Must lie in the range [2 ... 36].
+    ///
+    /// # Return value
+    ///
+    /// `Err(ParseIntError)` if the string did not represent a valid number. Otherwise, `Ok(n)`
+    /// where `n` is the integer represented by `src`.
     pub fn from_str_radix(src: &str, radix: u32) -> Result<u128, ParseIntError> {
         assert!(radix >= 2 && radix <= 36,
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
@@ -1425,11 +2049,11 @@ impl u128 {
         }
 
         let mut result = ZERO;
-        let radix128 = u128::new(radix as u64);
+        let radix64 = radix as u64;
 
         for c in src.chars() {
             let digit = try!(c.to_digit(radix).ok_or(error::INVALID_DIGIT.clone()));
-            let int_result = try!(result.checked_mul(radix128).ok_or(error::OVERFLOW.clone()));
+            let int_result = try!(result.checked_mul_64(radix64).ok_or(error::OVERFLOW.clone()));
             let digit128 = u128::new(digit as u64);
             result = try!(int_result.checked_add(digit128).ok_or(error::OVERFLOW.clone()));
         }
