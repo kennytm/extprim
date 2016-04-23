@@ -3,7 +3,6 @@
 use num_traits::{ToPrimitive, NumCast, One, Float, Num};
 use u128::u128;
 use i128::i128;
-use std::{f32, f64};
 use std::ops::MulAssign;
 
 /// Trait for converting itself into the extra primitive types.
