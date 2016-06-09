@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 # Generate documentation and commit into the gh-pages branch.
 

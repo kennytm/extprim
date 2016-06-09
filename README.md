@@ -1,9 +1,10 @@
 extprim
 =======
 
-[![Build status](https://travis-ci.org/kennytm/extprim.svg?branch=master)](https://travis-ci.org/kennytm/extprim)
+[![Travis (Linux and OS X) Build status](https://travis-ci.org/kennytm/extprim.svg?branch=master)](https://travis-ci.org/kennytm/extprim)
+[![AppVeyor (Windows) Build status](https://ci.appveyor.com/api/projects/status/59h8ugya24odwtgd/branch/master?svg=true)](https://ci.appveyor.com/project/kennytm/extprim/branch/master)
 [![Coverage Status](https://coveralls.io/repos/github/kennytm/extprim/badge.svg?branch=master)](https://coveralls.io/github/kennytm/extprim?branch=master)
-[![crates.io](http://meritbadge.herokuapp.com)](https://crates.io/crates/extprim)
+[![crates.io](http://meritbadge.herokuapp.com/extprim)](https://crates.io/crates/extprim)
 [![MIT / Apache 2.0](https://img.shields.io/badge/license-MIT%20%2f%20Apache%202.0-blue.svg)](./LICENSE-APACHE.txt)
 
 Extra primitive types. Currently includes:

@@ -1,6 +1,6 @@
 pub use self::detail::{udiv128, umod128, udivmod128};
 
-#[cfg(target_pointer_width="64")]
+#[cfg(all(target_pointer_width="64", unix))]
 mod detail {
     use u128::u128;
     use std::mem::uninitialized;
@@ -29,7 +29,7 @@ mod detail {
     }
 }
 
-#[cfg(not(target_pointer_width="64"))]
+#[cfg(not(all(target_pointer_width="64", unix)))]
 mod detail {
     use u128::{u128, ZERO};
     use std::mem::uninitialized;
