@@ -1,6 +1,3 @@
-# based on https://github.com/alexcrichton/gcc-rs/blob/master/.travis.yml
-# and https://github.com/rust-lang/libc/blob/master/.travis.yml
-
 language: rust
 sudo: false
 
@@ -19,11 +16,10 @@ os:
 
 rust:
     - 1.8.0
+    - 1.9.0
     - nightly
 
 env:
-    global:
-        - TRAVIS_CARGO_NIGHTLY_FEATURE=""  # <-- we use build.rs to distinguish nightly and stable.
     matrix:
         - ARCH=x86_64
         - ARCH=i686
@@ -31,7 +27,12 @@ env:
 matrix:
     allow_failures:
         - env: ARCH=i686
-        # FIXME: all i686 build panics with the message "Box<Any>", cause all `should_panic` tests to fail.
+          rust: 1.8.0
+        # Note: on 1.8.0, all i686 build panics with the message "Box<Any>", cause all `should_panic` tests to fail.
+        - env: ARCH=i686
+          rust: nightly
+        # Note: nightly-i686 keeps failing, it seems that travis's nightly is outdated.
+
 
 install:
     - if [ "$TRAVIS_OS_NAME" = 'linux' ]; then OS=unknown-linux-gnu; else OS=apple-darwin; fi
@@ -44,14 +45,15 @@ install:
             mv "rust-$TRAVIS_RUST_VERSION-$HOST/rust-std-$HOST/lib/rustlib/$HOST" "$SYSROOT/lib/rustlib"
         fi
 
-before_script:
-    - pip install 'travis-cargo<0.2' --user
-
 script:
+    - cargo build --target "$HOST"
     - cargo test --target "$HOST"
-    - cargo bench --target "$HOST"
+    - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --target "$HOST" --features bench; fi
     - cargo test --target "$HOST" --manifest-path extprim_tests/Cargo.toml
 
 after_success:
-    - travis-cargo coveralls --no-sudo --verify
+    - export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
+    - cargo install cargo-kcov
+    - cargo kcov --print-install-kcov-sh | bash
+    - cargo kcov --target "$HOST" --coveralls -- --verify
 
