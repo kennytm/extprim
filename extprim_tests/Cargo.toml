@@ -1,6 +1,6 @@
 [package]
 name = "extprim_tests"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Test case for extprim literals"
 repository = "https://github.com/kennytm/extprim"
@@ -14,11 +14,11 @@ include = [
 ]
 
 [dev-dependencies]
-extprim = { path = "../", version = "1.0.0" }
-extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
+extprim = { path = "../", version = "1.0.1" }
+extprim_literals = { path = "../extprim_literals", version = "1.0.1" }
 
 [build-dependencies]
-syntex = "0.31.0"
-extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
+syntex = "0.33.0"
+extprim_literals = { path = "../extprim_literals", version = "1.0.1" }
 rustc_version = "0.1.7"
 

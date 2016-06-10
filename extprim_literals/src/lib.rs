@@ -10,7 +10,7 @@
 //!
 //! ```toml
 //! [dev-dependencies]
-//! extprim_literals = "1.0.0"
+//! extprim_literals = "1.0.1"
 //! ```
 //!
 //! Then just use the plugin:
@@ -35,7 +35,7 @@
 //! build = "build.rs"
 //!
 //! [build-dependencies]
-//! extprim_literals = "1.0.0"
+//! extprim_literals = "1.0.1"
 //! syntex = "0.31.0"
 //! ```
 //!

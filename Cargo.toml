@@ -1,6 +1,6 @@
 [package]
 name = "extprim"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
@@ -18,7 +18,7 @@ include = [
 ]
 
 [dependencies]
-lazy_static = "0.2.0"
+lazy_static = "0.2.1"
 rand = "0.3.14"
 num-traits = "0.1.32"
 

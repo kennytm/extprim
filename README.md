@@ -20,10 +20,11 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.0.0"
+extprim = "1.0.1"
 ```
 
-If you want to use the `u128!()` and `i128!()` macros, please include the `syntex_literals` plugin. Details are explained in the [documentation](https://kennytm.github.io/extprim/extprim_literals/index.html).
+If you want to use the `u128!()` and `i128!()` macros, please include the `syntex_literals` plugin.
+Details are explained in the [documentation](https://kennytm.github.io/extprim/extprim_literals/index.html).
 
 Example
 -------
