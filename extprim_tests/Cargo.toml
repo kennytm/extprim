@@ -14,11 +14,11 @@ include = [
 ]
 
 [dev-dependencies]
-extprim = "1.0.0"
-extprim_literals = "1.0.0"
+extprim = { path = "../", version = "1.0.0" }
+extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
 
 [build-dependencies]
 syntex = "0.31.0"
-extprim_literals = "1.0.0"
+extprim_literals = { path = "../extprim_literals", version = "1.0.0" }
 rustc_version = "0.1.7"
 
