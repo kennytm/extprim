@@ -1,6 +1,6 @@
 [package]
 name = "extprim_literals"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Plugin for creating extra primitive types literals (u128!(n), i128!(n))"
 repository = "https://github.com/kennytm/extprim"
@@ -20,8 +20,8 @@ name = "extprim_literals"
 crate-type = ["dylib"]
 
 [dependencies]
-syntex = "0.33.0"
-syntex_syntax = "0.33.0"
+syntex = "0.36.0"
+syntex_syntax = "0.36.0"
 extprim = { path = "../", version = "1.1.0" }
 
 [build-dependencies]

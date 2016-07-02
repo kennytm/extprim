@@ -10,7 +10,7 @@
 //!
 //! ```toml
 //! [dev-dependencies]
-//! extprim_literals = "1.0.1"
+//! extprim_literals = "1.1.0"
 //! ```
 //!
 //! Then just use the plugin:
@@ -35,8 +35,8 @@
 //! build = "build.rs"
 //!
 //! [build-dependencies]
-//! extprim_literals = "1.0.1"
-//! syntex = "0.31.0"
+//! extprim_literals = "1.1.0"
+//! syntex = "0.36.0"
 //! ```
 //!
 //! Register `extprim_literals` to `syntex` in `build.rs`:
@@ -86,7 +86,9 @@ extern crate extprim;
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager, DummyResult};
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{Span, Spanned, respan};
-use syntax::ast::{TokenTree, Name, LitKind, LitIntType, UintTy};
+use syntax::ast::{Name, LitKind, LitIntType, UintTy};
+#[cfg(extprim_literals_channel="stable")] use syntax::ast::TokenTree;
+#[cfg(extprim_literals_channel="unstable")] use syntax::tokenstream::TokenTree;
 use syntax::parse::token::{Token, Lit, BinOpToken};
 
 use extprim::u128::u128;
