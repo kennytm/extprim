@@ -1,6 +1,7 @@
 //! Traits for conversion between the extra primitive types.
 
-use num_traits::{ToPrimitive, NumCast, One, Float, Num};
+use num_traits::{ToPrimitive, NumCast, One, Float};
+#[cfg(feature="use-std")] use num_traits::Num;
 use u128::u128;
 use i128::i128;
 use std::ops::MulAssign;
@@ -95,8 +96,6 @@ macro_rules! impl_to_extra_primitive_for_float {
 
 impl_to_extra_primitive_for_float!(f32, 23, 104, 103);
 impl_to_extra_primitive_for_float!(f64, 52, 75, 74);
-
-include!(concat!(env!("OUT_DIR"), "/cast.rs"));
 
 #[cfg(test)]
 mod float_to_128_tests {
@@ -225,6 +224,78 @@ mod float_to_128_tests {
     }
 }
 
+#[cfg(extprim_channel="unstable")]
+impl<T: ToPrimitive> ToExtraPrimitive for T {
+    default fn to_u128(&self) -> Option<u128> {
+        self.to_u64().map(u128::new)
+    }
+
+    default fn to_i128(&self) -> Option<i128> {
+        match self.to_u64() {
+            Some(v) => Some(i128(u128::new(v))),
+            None => self.to_i64().map(i128::new),
+        }
+    }
+}
+
+impl NumCast for u128 {
+    #[cfg(extprim_channel="unstable")]
+    fn from<T: ToPrimitive>(n: T) -> Option<u128> {
+        n.to_u128()
+    }
+
+    #[cfg(extprim_channel="stable")]
+    fn from<T: ToPrimitive>(_: T) -> Option<u128> {
+        panic!("cannot use this outside of nightly rust yet");
+    }
+}
+
+impl NumCast for i128 {
+    #[cfg(extprim_channel="unstable")]
+    fn from<T: ToPrimitive>(n: T) -> Option<i128> {
+        n.to_i128()
+    }
+
+    #[cfg(extprim_channel="stable")]
+    fn from<T: ToPrimitive>(_: T) -> Option<i128> {
+        panic!("cannot use this outside of nightly rust yet");
+    }
+}
+
+#[cfg(all(test, extprim_channel="unstable"))]
+mod num_cast_tests {
+    use std::u64;
+    use num_traits::NumCast;
+    use u128::u128;
+    use i128::i128;
+
+    #[test]
+    fn test_num_cast_for_u128() {
+        assert_eq!(None::<u64>, NumCast::from(-1i8)); // sanity check.
+        assert_eq!(None::<u128>, NumCast::from(-1i8));
+        assert_eq!(Some(u128::one()), NumCast::from(1i8));
+        assert_eq!(Some(u128::new(u64::MAX)), NumCast::from(u64::MAX));
+        assert_eq!(Some(u128::max_value()), NumCast::from(u128::max_value()));
+
+        assert_eq!(Some(u128::one()), NumCast::from(i128::new(1)));
+        assert_eq!(None::<u128>, NumCast::from(i128::new(-1)));
+    }
+
+    #[test]
+    fn test_num_cast_for_i128() {
+        assert_eq!(None::<i64>, NumCast::from(0x8000_0000_0000_0000u64)); // sanity check.
+        assert_eq!(None::<i128>, NumCast::from(u128::max_value()));
+        assert_eq!(Some(i128::one()), NumCast::from(1i8));
+        assert_eq!(Some(-i128::one()), NumCast::from(-1i8));
+        assert_eq!(Some(i128::from_parts(0, 0x8000_0000_0000_0000)), NumCast::from(0x8000_0000_0000_0000u64));
+        assert_eq!(Some(i128::max_value()), NumCast::from(i128::max_value()));
+        assert_eq!(Some(i128::min_value()), NumCast::from(i128::min_value()));
+
+        assert_eq!(Some(i128::one()), NumCast::from(i128::new(1)));
+        assert_eq!(None::<i128>, NumCast::from(u128::from_parts(0x8000_0000_0000_0000, 0)));
+    }
+}
+
 /// Wrapper for `u128` and `i128` to turn arithmetic operators to wrapping ones.
 ///
 /// Equivalent to `std::num::Wrapping`, but due to E0117 (orphan rule) we need to define it here to
@@ -276,6 +347,7 @@ pub fn pow<T: Copy + One + MulAssign>(mut base: T, mut exp: u32) -> T {
 /// assert_eq!(parse_rust_int_lit::<i128>("0x80000000_00000000_00000000_00000000", true).unwrap(),
 ///             i128::min_value());
 /// ```
+#[cfg(feature="use-std")] // TODO should be usable even without std.
 pub fn parse_rust_int_lit<T: Num>(s: &str, is_negative: bool) -> Result<T, T::FromStrRadixErr> {
     let mut c = s.chars();
     let (base, digits) = if c.next() != Some('0') {
@@ -288,6 +360,7 @@ pub fn parse_rust_int_lit<T: Num>(s: &str, is_negative: bool) -> Result<T, T::Fr
             _ => (10, s),
         }
     };
+
     let sign = if is_negative { "-" } else { "" };
     let digits = format!("{}{}", sign, digits.replace("_", ""));
     T::from_str_radix(&digits, base)

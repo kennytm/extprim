@@ -1,6 +1,6 @@
 //! Unsigned 128-bit integer.
 
-use std::fmt;
+use std::fmt::{self, Write};
 use std::u64;
 use std::str::FromStr;
 use std::ops::*;
@@ -8,13 +8,14 @@ use std::cmp::{PartialOrd, Ord, Ordering};
 use std::convert::From;
 use std::num::ParseIntError;
 
-use rand::{Rand, Rng};
+#[cfg(feature="use-std")] use rand::{Rand, Rng};
 use num_traits::*;
 
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 use error;
 use traits::{Wrapping, ToExtraPrimitive, pow};
+use format_buffer::FormatBuffer;
 
 //{{{ Structure
 
@@ -60,7 +61,14 @@ pub struct u128 {
 
 impl u128 {
     /// Constructs a new 128-bit integer from a 64-bit integer.
+    #[cfg(extprim_channel="stable")]
     pub fn new(lo: u64) -> u128 {
+        u128 { lo: lo, hi: 0 }
+    }
+
+    /// Constructs a new 128-bit integer from a 64-bit integer.
+    #[cfg(extprim_channel="unstable")]
+    pub const fn new(lo: u64) -> u128 {
         u128 { lo: lo, hi: 0 }
     }
 
@@ -76,7 +84,25 @@ impl u128 {
     /// let number = u128::from_parts(6692605942, 14083847773837265618);
     /// assert_eq!(format!("{}", number), "123456789012345678901234567890");
     /// ```
+    #[cfg(extprim_channel="stable")]
     pub fn from_parts(hi: u64, lo: u64) -> u128 {
+        u128 { lo: lo, hi: hi }
+    }
+
+    /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
+    ///
+    /// The new integer can be considered as `hi * 2**64 + lo`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use extprim::u128::u128;
+    ///
+    /// let number = u128::from_parts(6692605942, 14083847773837265618);
+    /// assert_eq!(format!("{}", number), "123456789012345678901234567890");
+    /// ```
+    #[cfg(extprim_channel="unstable")]
+    pub const fn from_parts(hi: u64, lo: u64) -> u128 {
         u128 { lo: lo, hi: hi }
     }
 
@@ -130,6 +156,7 @@ impl u128 {
 
 //{{{ Rand
 
+#[cfg(feature="use-std")]
 impl Rand for u128 {
     fn rand<R: Rng>(rng: &mut R) -> u128 {
         let (lo, hi) = rng.gen();
@@ -1866,7 +1893,6 @@ impl Unsigned for u128 {
 #[cfg(test)]
 mod prim_int_tests {
     use std::u64;
-    use num_traits::PrimInt;
     use u128::{u128, MAX, ZERO, ONE};
 
     #[test]
@@ -2044,18 +2070,18 @@ impl u128 {
                 "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                 radix);
 
-        if src.len() == 0 {
-            return Err(error::EMPTY.clone());
+        if src.is_empty() {
+            return Err(error::empty());
         }
 
         let mut result = ZERO;
         let radix64 = radix as u64;
 
         for c in src.chars() {
-            let digit = try!(c.to_digit(radix).ok_or(error::INVALID_DIGIT.clone()));
-            let int_result = try!(result.checked_mul_64(radix64).ok_or(error::OVERFLOW.clone()));
+            let digit = try!(c.to_digit(radix).ok_or_else(error::invalid_digit));
+            let int_result = try!(result.checked_mul_64(radix64).ok_or_else(error::overflow));
             let digit128 = u128::new(digit as u64);
-            result = try!(int_result.checked_add(digit128).ok_or(error::OVERFLOW.clone()));
+            result = try!(int_result.checked_add(digit128).ok_or_else(error::overflow));
         }
 
         Ok(result)
@@ -2131,12 +2157,12 @@ mod from_str_tests {
 
         assert_eq!(Ok(ZERO), u128::from_str_radix("0", 2));
         assert_eq!(Ok(ZERO), u128::from_str_radix("0000000000000000000000000000000000", 36));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), u128::from_str_radix("123", 3));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), u128::from_str_radix("-1", 10));
-        assert_eq!(Err(error::EMPTY.clone()), u128::from_str_radix("", 10));
+        assert_eq!(Err(error::invalid_digit()), u128::from_str_radix("123", 3));
+        assert_eq!(Err(error::invalid_digit()), u128::from_str_radix("-1", 10));
+        assert_eq!(Err(error::empty()), u128::from_str_radix("", 10));
         assert_eq!(Ok(MAX), u128::from_str_radix("f5lxx1zz5pnorynqglhzmsp33", 36));
-        assert_eq!(Err(error::OVERFLOW.clone()), u128::from_str_radix("f5lxx1zz5pnorynqglhzmsp34", 36));
-        assert_eq!(Err(error::OVERFLOW.clone()), u128::from_str_radix("f5lxx1zz5pnorynqglhzmsp43", 36));
+        assert_eq!(Err(error::overflow()), u128::from_str_radix("f5lxx1zz5pnorynqglhzmsp34", 36));
+        assert_eq!(Err(error::overflow()), u128::from_str_radix("f5lxx1zz5pnorynqglhzmsp43", 36));
     }
 }
 
@@ -2145,81 +2171,96 @@ mod from_str_tests {
 //{{{ Binary, LowerHex, UpperHex, Octal, String, Show
 
 impl fmt::Display for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         if self.hi == 0 {
             self.lo.fmt(formatter)
         } else {
             const TEN19: u128 = u128 { lo: 10000000000000000000, hi: 0 };
 
+            let mut buffer = [0u8; 39];
+            let mut buf = FormatBuffer::new(&mut buffer);
+
             let (mid, lo) = div_rem(*self, TEN19);
-            let core_string = if mid.hi == 0 {
-                format!("{}{:019}", mid.lo, lo.lo)
+            if mid.hi == 0 {
+                try!(write!(&mut buf, "{}{:019}", mid.lo, lo.lo));
             } else {
                 let (hi, mid) = div_rem(mid, TEN19);
-                format!("{}{:019}{:019}", hi.lo, mid.lo, lo.lo)
-            };
+                try!(write!(&mut buf, "{}{:019}{:019}", hi.lo, mid.lo, lo.lo));
+            }
 
-            formatter.pad_integral(true, "", &*core_string)
+            formatter.pad_integral(true, "", unsafe { buf.into_str() })
         }
     }
 }
 
 impl fmt::Debug for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "u128!({})", self)
     }
 }
 
 impl fmt::Binary for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         if self.hi == 0 {
             self.lo.fmt(formatter)
         } else {
-            let core_string = format!("{:b}{:064b}", self.hi, self.lo);
-            formatter.pad_integral(true, "0b", &core_string)
+            let mut buffer = [0u8; 128];
+            let mut buf = FormatBuffer::new(&mut buffer);
+
+            try!(write!(&mut buf, "{:b}{:064b}", self.hi, self.lo));
+            formatter.pad_integral(true, "0b", unsafe { buf.into_str() })
         }
     }
 }
 
 impl fmt::LowerHex for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         if self.hi == 0 {
             self.lo.fmt(formatter)
         } else {
-            let core_string = format!("{:x}{:016x}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", &core_string)
+            let mut buffer = [0u8; 32];
+            let mut buf = FormatBuffer::new(&mut buffer);
+
+            try!(write!(&mut buf, "{:x}{:016x}", self.hi, self.lo));
+            formatter.pad_integral(true, "0x", unsafe { buf.into_str() })
         }
     }
 }
 
 impl fmt::UpperHex for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         if self.hi == 0 {
             self.lo.fmt(formatter)
         } else {
-            let core_string = format!("{:X}{:016X}", self.hi, self.lo);
-            formatter.pad_integral(true, "0x", &core_string)
+            let mut buffer = [0u8; 32];
+            let mut buf = FormatBuffer::new(&mut buffer);
+
+            try!(write!(&mut buf, "{:X}{:016X}", self.hi, self.lo));
+            formatter.pad_integral(true, "0x", unsafe { buf.into_str() })
         }
     }
 }
 
 impl fmt::Octal for u128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         const MASK: u64 = (1 << 63) - 1;
 
         let lo = self.lo & MASK;
         let mid = (self.hi << 1 | self.lo >> 63) & MASK;
         let hi = self.hi >> 62;
 
-        let core_string = if hi != 0 {
-            format!("{:o}{:021o}{:021o}", hi, mid, lo)
+        let mut buffer = [0u8; 43];
+        let mut buf = FormatBuffer::new(&mut buffer);
+
+        if hi != 0 {
+            try!(write!(&mut buf, "{:o}{:021o}{:021o}", hi, mid, lo));
         } else if mid != 0 {
-            format!("{:o}{:021o}", mid, lo)
+            try!(write!(&mut buf, "{:o}{:021o}", mid, lo));
         } else {
             return lo.fmt(formatter);
-        };
+        }
 
-        formatter.pad_integral(true, "0o", &core_string)
+        formatter.pad_integral(true, "0o", unsafe { buf.into_str() })
     }
 }
 
@@ -2229,65 +2270,70 @@ mod show_tests {
 
     #[test]
     fn test_display() {
-        assert_eq!("0", format!("{}", u128::new(0)));
-        assert_eq!("10578104835920319894",
-                    format!("{}", u128::new(10578104835920319894)));
-        assert_eq!("91484347284476727216111035283008240438",
-                    format!("{}", u128::from_parts(4959376403712401289, 46322452157807414)));
-        assert_eq!("221073131124184722582670274216994227164",
-                    format!("{}", u128::from_parts(11984398452150693167, 12960002013829219292)));
-        assert_eq!("340282366920938463463374607431768211455",
-                    format!("{}", MAX));
-        assert_eq!("100000000000000000000000000000000000000",
-                    format!("{}", u128::from_parts(5421010862427522170, 687399551400673280)));
-        assert_eq!("+00340282366920938463463374607431768211455",
-                    format!("{:+042}", MAX));
+        assert_fmt_eq!("0", 1,
+                       "{}", u128::new(0));
+        assert_fmt_eq!("10578104835920319894", 20,
+                       "{}", u128::new(10578104835920319894));
+        assert_fmt_eq!("91484347284476727216111035283008240438", 38,
+                       "{}", u128::from_parts(4959376403712401289, 46322452157807414));
+        assert_fmt_eq!("221073131124184722582670274216994227164", 39,
+                       "{}", u128::from_parts(11984398452150693167, 12960002013829219292));
+        assert_fmt_eq!("340282366920938463463374607431768211455", 39,
+                       "{}", MAX);
+        assert_fmt_eq!("100000000000000000000000000000000000000", 39,
+                       "{}", u128::from_parts(5421010862427522170, 687399551400673280));
+        assert_fmt_eq!("+00340282366920938463463374607431768211455", 42,
+                       "{:+042}", MAX);
     }
 
     #[test]
     fn test_binary() {
-        assert_eq!("0", format!("{:b}", u128::new(0)));
-        assert_eq!("111001011001111000111001100100010100111010010001110101100101011",
-                    format!("{:b}", u128::new(8272862688628501291)));
-        assert_eq!("10101011011101011000001011010101101001110110100010000100010001111001010100010010110000000000100100101001100100010110111010011011",
-                    format!("{:b}", u128::from_parts(12354925006909113415, 10741859206816689819)));
-        assert_eq!("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    format!("{:b}", u128::from_parts(9223372036854775808, 0)));
-        assert_eq!("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-                    format!("{:b}", MAX));
+        assert_fmt_eq!("0", 1,
+                       "{:b}", u128::new(0));
+        assert_fmt_eq!("111001011001111000111001100100010100111010010001110101100101011", 63,
+                       "{:b}", u128::new(8272862688628501291));
+        assert_fmt_eq!("10101011011101011000001011010101101001110110100010000100010001111001010100010010110000000000100100101001100100010110111010011011", 128,
+                       "{:b}", u128::from_parts(12354925006909113415, 10741859206816689819));
+        assert_fmt_eq!("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 128,
+                       "{:b}", u128::from_parts(9223372036854775808, 0));
+        assert_fmt_eq!("11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111", 128,
+                       "{:b}", MAX);
     }
 
     #[test]
     fn test_hex() {
-        assert_eq!("0", format!("{:x}", u128::new(0)));
-        assert_eq!("25c22f8602efedb5",
-                    format!("{:x}", u128::new(2720789377506602421)));
-        assert_eq!("2c73d4b3d1a46f081a04e1ea9846faee",
-                    format!("{:x}", u128::from_parts(3203137628772003592, 1874871742586354414)));
-        assert_eq!("80000000000000000000000000000000",
-                    format!("{:x}", u128::from_parts(9223372036854775808, 0)));
-        assert_eq!(" 0xA", format!("{:#4X}", u128::new(10)));
-        assert_eq!("25C22F8602EFEDB5",
-                    format!("{:X}", u128::new(2720789377506602421)));
-        assert_eq!("2C73D4B3D1A46F081A04E1EA9846FAEE",
-                    format!("{:X}", u128::from_parts(3203137628772003592, 1874871742586354414)));
-        assert_eq!("C000000000000000000000000000000",
-                    format!("{:X}", u128::from_parts(864691128455135232, 0)));
+        assert_fmt_eq!("0", 1,
+                       "{:x}", u128::new(0));
+        assert_fmt_eq!("25c22f8602efedb5", 16,
+                       "{:x}", u128::new(2720789377506602421));
+        assert_fmt_eq!("2c73d4b3d1a46f081a04e1ea9846faee", 32,
+                       "{:x}", u128::from_parts(3203137628772003592, 1874871742586354414));
+        assert_fmt_eq!("80000000000000000000000000000000", 32,
+                       "{:x}", u128::from_parts(9223372036854775808, 0));
+        assert_fmt_eq!(" 0xA", 4,
+                       "{:#4X}", u128::new(10));
+        assert_fmt_eq!("25C22F8602EFEDB5", 16,
+                       "{:X}", u128::new(2720789377506602421));
+        assert_fmt_eq!("2C73D4B3D1A46F081A04E1EA9846FAEE", 32,
+                       "{:X}", u128::from_parts(3203137628772003592, 1874871742586354414));
+        assert_fmt_eq!("C000000000000000000000000000000", 31,
+                       "{:X}", u128::from_parts(864691128455135232, 0));
     }
 
     #[test]
     fn test_octal() {
-        assert_eq!("0", format!("{:o}", u128::new(0)));
-        assert_eq!("351462366146756037170",
-                    format!("{:o}", u128::new(4208138189379485304)));
-        assert_eq!("7000263630010212417200",
-                    format!("{:o}", u128::from_parts(3, 9229698078115241600)));
-        assert_eq!("3465177151267706210351536216110755202064135",
-                    format!("{:o}", u128::from_parts(16620520452737763444, 15533412710015854685)));
-        assert_eq!("3777777777777777777777777777777777777777777",
-                    format!("{:o}", u128::from_parts(18446744073709551615, 18446744073709551615)));
-        assert_eq!("2000000000000000000000000000000000000000000",
-                    format!("{:o}", u128::from_parts(9223372036854775808, 0)));
+        assert_fmt_eq!("0", 1,
+                       "{:o}", u128::new(0));
+        assert_fmt_eq!("351462366146756037170", 21,
+                       "{:o}", u128::new(4208138189379485304));
+        assert_fmt_eq!("7000263630010212417200", 22,
+                       "{:o}", u128::from_parts(3, 9229698078115241600));
+        assert_fmt_eq!("3465177151267706210351536216110755202064135", 43,
+                       "{:o}", u128::from_parts(16620520452737763444, 15533412710015854685));
+        assert_fmt_eq!("3777777777777777777777777777777777777777777", 43,
+                       "{:o}", u128::from_parts(18446744073709551615, 18446744073709551615));
+        assert_fmt_eq!("2000000000000000000000000000000000000000000", 43,
+                       "{:o}", u128::from_parts(9223372036854775808, 0));
     }
 }
 

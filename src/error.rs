@@ -1,30 +1,36 @@
 use core::num::ParseIntError;
-use std::str::FromStr;
+use core::mem::transmute;
 
-lazy_static! {
-    pub static ref INVALID_DIGIT: ParseIntError = <i8 as FromStr>::from_str("?").unwrap_err();
-    pub static ref UNDERFLOW: ParseIntError = <i8 as FromStr>::from_str("-999").unwrap_err();
-    pub static ref OVERFLOW: ParseIntError = <i8 as FromStr>::from_str("999").unwrap_err();
-    pub static ref EMPTY: ParseIntError = <i8 as FromStr>::from_str("").unwrap_err();
+pub fn invalid_digit() -> ParseIntError {
+    unsafe { transmute(1u8) }
+}
+
+pub fn underflow() -> ParseIntError {
+    unsafe { transmute(3u8) }
+}
+
+pub fn overflow() -> ParseIntError {
+    unsafe { transmute(2u8) }
+}
+
+pub fn empty() -> ParseIntError {
+    unsafe { transmute(0u8) }
+}
+
+pub fn is_overflow(e: &ParseIntError) -> bool {
+    *e == overflow()
 }
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
     use error;
 
     #[test]
     fn test_local_parse_int_error_to_std() {
-        let test_cases = &[
-            (&*error::INVALID_DIGIT, "invalid digit found in string"),
-            (&*error::EMPTY, "cannot parse integer from empty string"),
-            (&*error::OVERFLOW, "number too large to fit in target type"),
-            (&*error::UNDERFLOW, "number too small to fit in target type"),
-        ];
-
-        for &(err, desc) in test_cases {
-            assert_eq!(err.description(), desc);
-        }
+        assert_fmt_eq!("invalid digit found in string", 29, "{}", error::invalid_digit());
+        assert_fmt_eq!("cannot parse integer from empty string", 38, "{}", error::empty());
+        assert_fmt_eq!("number too large to fit in target type", 38, "{}", error::overflow());
+        assert_fmt_eq!("number too small to fit in target type", 38, "{}", error::underflow());
     }
 }
 

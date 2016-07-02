@@ -5,3 +5,5 @@ Cargo.lock
 *.o
 *.a
 *.pyc
+.DS_Store
+*.s
