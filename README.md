@@ -9,10 +9,17 @@ extprim
 
 Extra primitive types. Currently includes:
 
-* u128 (unsigned 128-bit integers)
-* i128 (signed 128-bit integers)
+* `u128` (unsigned 128-bit integers)
+* `i128` (signed 128-bit integers)
 
 [Documentation](https://kennytm.github.io/extprim/extprim/index.html)
+
+You may also find other primitive types in other crates:
+
+* `u12` → [twelve_bit](https://crates.io/crates/twelve_bit)
+* `f16` → [half](https://crates.io/crates/half)
+* `d128` → [decimal](https://crates.io/crates/decimal)
+* `Complex<T>` → [num-complex](https://crates.io/crates/num-complex)
 
 Usage
 -----
@@ -20,7 +27,7 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.0.1"
+extprim = "1.1.0"
 ```
 
 If you want to use the `u128!()` and `i128!()` macros, please include the `syntex_literals` plugin.
