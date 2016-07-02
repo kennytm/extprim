@@ -51,7 +51,7 @@
 //! }
 //! ```
 
-#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, float_extras))]
+#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, float_extras, const_fn))]
 // feature requirement:
 //  - asm: to provide a fast implementation of u64_long_mul in x86_64
 //  - test: benchmarking

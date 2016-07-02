@@ -45,7 +45,14 @@ pub struct i128(
 
 impl i128 {
     /// Constructs a new 128-bit integer from a 64-bit integer.
+    #[cfg(extprim_channel="stable")]
     pub fn new(lo: i64) -> i128 {
+        i128(u128 { lo: lo as u64, hi: (lo >> 63) as u64 })
+    }
+
+    /// Constructs a new 128-bit integer from a 64-bit integer.
+    #[cfg(extprim_channel="unstable")]
+    pub const fn new(lo: i64) -> i128 {
         i128(u128 { lo: lo as u64, hi: (lo >> 63) as u64 })
     }
 
@@ -59,6 +66,22 @@ impl i128 {
     /// assert_eq!(format!("{}", number), "-123456789012345678901234567890");
     /// // Note: -123456789012345678901234567890 = -6692605943 << 64 | 4362896299872285998
     /// ```
+    #[cfg(extprim_channel="stable")]
+    pub fn from_parts(hi: i64, lo: u64) -> i128 {
+        i128(u128 { lo: lo, hi: hi as u64 })
+    }
+
+    /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
+    ///
+    /// The new integer can be considered as `hi * 2**64 + lo`.
+    ///
+    /// ```
+    /// use extprim::i128::i128;
+    /// let number = i128::from_parts(-6692605943, 4362896299872285998);
+    /// assert_eq!(format!("{}", number), "-123456789012345678901234567890");
+    /// // Note: -123456789012345678901234567890 = -6692605943 << 64 | 4362896299872285998
+    /// ```
+    #[cfg(extprim_channel="unstable")]
     pub fn from_parts(hi: i64, lo: u64) -> i128 {
         i128(u128 { lo: lo, hi: hi as u64 })
     }
