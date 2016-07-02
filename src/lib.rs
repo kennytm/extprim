@@ -59,18 +59,18 @@
 //                    between the 128-bit types remain correct
 //  - float_extras: to use `ldexp`, to have a more efficient conversion from u128 to f64.
 
-#[cfg(extprim_channel="unstable")]
-extern crate test;
+#![cfg_attr(not(feature="use-std"), no_std)]
 
-extern crate core;
-extern crate rand;
-#[macro_use]
-extern crate lazy_static;
+#[cfg(extprim_channel="unstable")] extern crate test;
+
+#[cfg(feature="use-std")] extern crate core;
+#[cfg(not(feature="use-std"))] extern crate core as std;
+#[cfg(feature="use-std")] extern crate rand;
 extern crate num_traits;
 
+#[macro_use] mod forward;
+#[cfg_attr(test, macro_use)] mod format_buffer;
 mod error;
-#[macro_use]
-mod forward;
 pub mod traits;
 pub mod u128;
 pub mod i128;

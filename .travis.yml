@@ -42,6 +42,8 @@ install:
         fi
 
 script:
+    - cargo build --target "$HOST" --no-default-features
+    - cargo test --target "$HOST" --no-default-features
     - cargo build --target "$HOST"
     - cargo test --target "$HOST"
     - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --target "$HOST" --features bench; fi

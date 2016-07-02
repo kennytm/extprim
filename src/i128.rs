@@ -1,17 +1,18 @@
 //! Signed 128-bit integer.
 
 use std::str::FromStr;
-use std::fmt;
+use std::fmt::{self, Write};
 use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
 use std::num::ParseIntError;
 
-use rand::{Rand, Rng};
+#[cfg(feature="use-std")] use rand::{Rand, Rng};
 use num_traits::*;
 
 use u128::u128;
 use error;
 use traits::{ToExtraPrimitive, Wrapping, pow};
+use format_buffer::FormatBuffer;
 
 //{{{ Structure
 
@@ -125,6 +126,7 @@ mod structure_tests {
 
 //{{{ Rand
 
+#[cfg(feature="use-std")]
 impl Rand for i128 {
     fn rand<R: Rng>(rng: &mut R) -> i128 {
         i128(u128::rand(rng))
@@ -1739,7 +1741,7 @@ impl i128 {
         let (is_negative, src) = match src_chars.next() {
             Some('-') => (true, src_chars.as_str()),
             Some(_) => (false, src),
-            None => return Err(error::EMPTY.clone()),
+            None => return Err(error::empty()),
         };
 
         match u128::from_str_radix(src, radix) {
@@ -1747,17 +1749,17 @@ impl i128 {
                 let res = from_sign_abs(is_negative, res);
                 if res != ZERO && res.is_negative() != is_negative {
                     Err(if is_negative {
-                        error::UNDERFLOW.clone()
+                        error::underflow()
                     } else {
-                        error::OVERFLOW.clone()
+                        error::overflow()
                     })
                 } else {
                     Ok(res)
                 }
             },
             Err(e) => {
-                if is_negative && e == *error::OVERFLOW {
-                    Err(error::UNDERFLOW.clone())
+                if is_negative && error::is_overflow(&e) {
+                    Err(error::underflow())
                 } else {
                     Err(e)
                 }
@@ -1837,14 +1839,14 @@ mod from_str_tests {
         assert_eq!(Ok(ZERO), i128::from_str_radix("0", 2));
         assert_eq!(Ok(ZERO), i128::from_str_radix("-0", 2));
         assert_eq!(Ok(ZERO), i128::from_str_radix("0000000000000000000000000000000000", 36));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), i128::from_str_radix("123", 3));
+        assert_eq!(Err(error::invalid_digit()), i128::from_str_radix("123", 3));
         assert_eq!(Ok(-ONE), i128::from_str_radix("-1", 10));
-        assert_eq!(Err(error::INVALID_DIGIT.clone()), i128::from_str_radix("~1", 10));
-        assert_eq!(Err(error::EMPTY.clone()), i128::from_str_radix("", 10));
+        assert_eq!(Err(error::invalid_digit()), i128::from_str_radix("~1", 10));
+        assert_eq!(Err(error::empty()), i128::from_str_radix("", 10));
         assert_eq!(Ok(MAX), i128::from_str_radix("7ksyyizzkutudzbv8aqztecjj", 36));
         assert_eq!(Ok(MIN), i128::from_str_radix("-7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(Err(error::OVERFLOW.clone()), i128::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
-        assert_eq!(Err(error::UNDERFLOW.clone()), i128::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
+        assert_eq!(Err(error::overflow()), i128::from_str_radix("7ksyyizzkutudzbv8aqztecjk", 36));
+        assert_eq!(Err(error::underflow()), i128::from_str_radix("-7ksyyizzkutudzbv8aqztecjl", 36));
     }
 }
 
@@ -1856,48 +1858,47 @@ mod from_str_tests {
 // and hex mode.
 
 impl fmt::Binary for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
 impl fmt::LowerHex for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
 impl fmt::UpperHex for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
 impl fmt::Octal for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(formatter)
     }
 }
 
 impl fmt::Display for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         if !self.is_negative() {
             self.0.fmt(formatter)
         } else if *self == MIN {
             formatter.pad_integral(false, "", "170141183460469231731687303715884105728")
         } else {
-            let core_string = format!("{}", self.0.wrapping_neg());
-            formatter.pad_integral(false, "", &*core_string)
+            let mut buffer = [0u8; 39];
+            let mut buf = FormatBuffer::new(&mut buffer);
+            try!(write!(&mut buf, "{}", self.0.wrapping_neg()));
+            formatter.pad_integral(false, "", unsafe { buf.into_str() })
         }
     }
 }
 
 impl fmt::Debug for i128 {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        try!(formatter.write_str("i128!("));
-        try!(fmt::Display::fmt(self, formatter));
-        try!(formatter.write_str(")"));
-        Ok(())
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "i128!({})", self)
     }
 }
 
@@ -1907,22 +1908,19 @@ mod show_tests {
 
     #[test]
     fn test_show() {
-        assert_eq!("0", format!("{}", ZERO));
-        assert_eq!("1", format!("{}", ONE));
-        assert_eq!("-1", format!("{}", -ONE));
-        assert_eq!("170141183460469231731687303715884105727", format!("{}", MAX));
-        assert_eq!("-170141183460469231731687303715884105727", format!("{}", -MAX));
-        assert_eq!("-170141183460469231731687303715884105728", format!("{}", MIN));
-        assert_eq!("-41001515780870386888810710836203638388",
-                   format!("{}", i128::from_parts(-2222696624240918362,
-                                                  11097545986877534604)));
-        assert_eq!("+00170141183460469231731687303715884105727",
-                   format!("{:+042}", MAX));
-        assert_eq!("-00170141183460469231731687303715884105728",
-                   format!("{:+042}", MIN));
+        assert_fmt_eq!("0", 1, "{}", ZERO);
+        assert_fmt_eq!("1", 1, "{}", ONE);
+        assert_fmt_eq!("-1", 2, "{}", -ONE);
+        assert_fmt_eq!("170141183460469231731687303715884105727", 40, "{}", MAX);
+        assert_fmt_eq!("-170141183460469231731687303715884105727", 40, "{}", -MAX);
+        assert_fmt_eq!("-170141183460469231731687303715884105728", 40, "{}", MIN);
+        assert_fmt_eq!("-41001515780870386888810710836203638388", 40,
+                       "{}", i128::from_parts(-2222696624240918362, 11097545986877534604));
+        assert_fmt_eq!("+00170141183460469231731687303715884105727", 42, "{:+042}", MAX);
+        assert_fmt_eq!("-00170141183460469231731687303715884105728", 42, "{:+042}", MIN);
 
         // Sanity test
-        assert_eq!("ff", format!("{:x}", -1i8));
+        assert_fmt_eq!("ff", 2, "{:x}", -1i8);
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "extprim"
-version = "1.0.1"
+version = "1.1.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
@@ -18,10 +18,13 @@ include = [
 ]
 
 [dependencies]
-lazy_static = "0.2.1"
-rand = "0.3.14"
+rand = { version = "0.3.14", optional = true }
 num-traits = "0.1.32"
 
 [build-dependencies]
 rustc_version = "0.1.7"
+
+[features]
+default = ["use-std"]
+use-std = ["rand"]
 

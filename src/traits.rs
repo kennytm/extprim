@@ -1,6 +1,7 @@
 //! Traits for conversion between the extra primitive types.
 
-use num_traits::{ToPrimitive, NumCast, One, Float, Num};
+use num_traits::{ToPrimitive, NumCast, One, Float};
+#[cfg(feature="use-std")] use num_traits::Num;
 use u128::u128;
 use i128::i128;
 use std::ops::MulAssign;
@@ -264,7 +265,7 @@ impl NumCast for i128 {
 #[cfg(all(test, extprim_channel="unstable"))]
 mod num_cast_tests {
     use std::u64;
-    use num_traits::{NumCast, One, Bounded};
+    use num_traits::NumCast;
     use u128::u128;
     use i128::i128;
 
@@ -346,6 +347,7 @@ pub fn pow<T: Copy + One + MulAssign>(mut base: T, mut exp: u32) -> T {
 /// assert_eq!(parse_rust_int_lit::<i128>("0x80000000_00000000_00000000_00000000", true).unwrap(),
 ///             i128::min_value());
 /// ```
+#[cfg(feature="use-std")] // TODO should be usable even without std.
 pub fn parse_rust_int_lit<T: Num>(s: &str, is_negative: bool) -> Result<T, T::FromStrRadixErr> {
     let mut c = s.chars();
     let (base, digits) = if c.next() != Some('0') {
@@ -358,6 +360,7 @@ pub fn parse_rust_int_lit<T: Num>(s: &str, is_negative: bool) -> Result<T, T::Fr
             _ => (10, s),
         }
     };
+
     let sign = if is_negative { "-" } else { "" };
     let digits = format!("{}{}", sign, digits.replace("_", ""));
     T::from_str_radix(&digits, base)
