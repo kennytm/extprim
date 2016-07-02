@@ -6,10 +6,6 @@ platform:
 
 environment:
     matrix:
-        - RUST: 1.8.0
-          ABI: msvc
-        - RUST: 1.8.0
-          ABI: gnu
         - RUST: 1.9.0
           ABI: msvc
         - RUST: 1.9.0

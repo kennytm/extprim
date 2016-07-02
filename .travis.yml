@@ -46,7 +46,7 @@ script:
     - cargo test --target "$HOST" --no-default-features
     - cargo build --target "$HOST"
     - cargo test --target "$HOST"
-    - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --target "$HOST" --features bench; fi
+    - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --target "$HOST"; fi
     - cargo test --target "$HOST" --manifest-path extprim_tests/Cargo.toml
 
 after_success:
