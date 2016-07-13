@@ -11,7 +11,7 @@ use num_traits::*;
 
 use u128::u128;
 use error;
-use traits::{ToExtraPrimitive, Wrapping, pow};
+use traits::{ToExtraPrimitive, Wrapping};
 use format_buffer::FormatBuffer;
 
 //{{{ Structure
@@ -1526,7 +1526,7 @@ impl i128 {
     /// assert_eq!(i128::new(-5).pow(30), i128::from_str("931322574615478515625").unwrap());
     /// ```
     pub fn pow(self, exp: u32) -> Self {
-        pow(self, exp)
+        pow(self, exp as usize)
     }
 }
 

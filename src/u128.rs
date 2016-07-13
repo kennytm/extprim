@@ -14,7 +14,7 @@ use num_traits::*;
 use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 use error;
-use traits::{Wrapping, ToExtraPrimitive, pow};
+use traits::{Wrapping, ToExtraPrimitive};
 use format_buffer::FormatBuffer;
 
 //{{{ Structure
@@ -1791,7 +1791,7 @@ impl u128 {
     /// assert_eq!(u128::new(5).pow(30), u128::from_str("931322574615478515625").unwrap());
     /// ```
     pub fn pow(self, exp: u32) -> Self {
-        pow(self, exp)
+        pow(self, exp as usize)
     }
 
     /// Returns `true` if and only if `self == 2**k` for some `k`.
