@@ -1475,14 +1475,9 @@ mod div_rem_tests {
 
 //{{{ Casting
 
-#[cfg(extprim_channel="stable")]
 fn ldexp(base: f64, exp: u32) -> f64 {
-    base * (exp as f64).exp2()
-}
-
-#[cfg(extprim_channel="unstable")]
-fn ldexp(base: f64, exp: u32) -> f64 {
-    f64::ldexp(base, exp as isize)
+    // TODO the built-in `ldexp` is deprecated. Find alternate native implementation instead.
+    base * 2.0 * (1u64 << (exp-1)) as f64
 }
 
 impl ToPrimitive for u128 {

@@ -51,13 +51,12 @@
 //! }
 //! ```
 
-#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, float_extras, const_fn))]
+#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, const_fn))]
 // feature requirement:
 //  - asm: to provide a fast implementation of u64_long_mul in x86_64
 //  - test: benchmarking
 //  - specialization: to allow ToExtraPrimitive inherit from ToPrimitive, while ensuring conversion
 //                    between the 128-bit types remain correct
-//  - float_extras: to use `ldexp`, to have a more efficient conversion from u128 to f64.
 
 #![cfg_attr(not(feature="use-std"), no_std)]
 

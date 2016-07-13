@@ -312,6 +312,7 @@ pub struct Wrapping<T>(pub T);
 ///
 /// assert_eq!(pow(10u64, 7), 10000000u64);
 /// ```
+#[deprecated(since="1.1.1", note="please use `num_traits::pow` instead")]
 pub fn pow<T: Copy + One + MulAssign>(mut base: T, mut exp: u32) -> T {
     let mut acc = T::one();
 
