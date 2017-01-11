@@ -56,6 +56,12 @@ impl i128 {
         i128(u128 { lo: lo as u64, hi: (lo >> 63) as u64 })
     }
 
+    /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_channel="unstable")]
+    pub const fn from_built_in(value: ::rustc_i128::i128) -> i128 {
+        i128(u128::from_built_in(value as ::rustc_i128::u128))
+    }
+
     /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
     ///
     /// The new integer can be considered as `hi * 2**64 + lo`.
@@ -129,6 +135,12 @@ impl i128 {
     /// ```
     pub fn as_u128(self) -> u128 {
         self.0
+    }
+
+    /// Converts this number to the built-in 128-bit integer type.
+    #[cfg(extprim_channel="unstable")]
+    pub fn as_built_in(self) -> ::rustc_i128::i128 {
+        (self.high64() as ::rustc_i128::i128) << 64 | self.low64() as ::rustc_i128::i128
     }
 }
 
@@ -1316,13 +1328,20 @@ impl From<i64> for i128 {
     }
 }
 
+#[cfg(extprim_channel="unstable")]
+impl From<::rustc_i128::i128> for i128 {
+    fn from(arg: ::rustc_i128::i128) -> Self {
+        i128::from_built_in(arg)
+    }
+}
+
 #[cfg(test)]
 mod conv_tests {
     use i128::{i128, MIN, MAX};
     use num_traits::ToPrimitive;
 
     #[test]
-    fn test_u128_to_f64() {
+    fn test_i128_to_f64() {
         assert_eq!(i128::new(0).to_f64(), Some(0.0f64));
         assert_eq!(i128::new(1).to_f64(), Some(1.0f64));
         assert_eq!(i128::new(2).to_f64(), Some(2.0f64));
@@ -1330,6 +1349,15 @@ mod conv_tests {
         assert_eq!(i128::new(-1).to_f64(), Some(-1.0f64));
         assert_eq!(i128::new(-2).to_f64(), Some(-2.0f64));
         assert_eq!(MIN.to_f64(), Some(-170141183460469231731687303715884105728.0f64));
+    }
+
+    #[cfg(extprim_channel="unstable")]
+    #[test]
+    fn test_builtin_i128_to_i128() {
+        assert_eq!(i128::from_built_in(0x76571c252122c42e_8cdf8e3b4b75c4d0i128), i128::from_parts(0x76571c252122c42e, 0x8cdf8e3b4b75c4d0));
+        assert_eq!(i128::from_built_in(-0x76571c252122c42e_8cdf8e3b4b75c4d0i128), i128::from_parts(-0x76571c252122c42f, 0x732071c4b48a3b30));
+        assert_eq!(0x76571c252122c42e_8cdf8e3b4b75c4d0i128, i128::from_parts(0x76571c252122c42e, 0x8cdf8e3b4b75c4d0).as_built_in());
+        assert_eq!(-0x76571c252122c42e_8cdf8e3b4b75c4d0i128, i128::from_parts(-0x76571c252122c42f, 0x732071c4b48a3b30).as_built_in());
     }
 }
 

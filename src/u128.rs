@@ -72,6 +72,15 @@ impl u128 {
         u128 { lo: lo, hi: 0 }
     }
 
+    /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_channel="unstable")]
+    pub const fn from_built_in(value: ::rustc_i128::u128) -> u128 {
+        u128 {
+            lo: (value & 0xffff_ffff_ffff_ffff) as u64,
+            hi: (value >> 64) as u64,
+        }
+    }
+
     /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
     ///
     /// The new integer can be considered as `hi * 2**64 + lo`.
@@ -106,7 +115,7 @@ impl u128 {
         u128 { lo: lo, hi: hi }
     }
 
-    /// Fetch the lower-64-bit of the number.
+    /// Fetches the lower-64-bit of the number.
     ///
     /// # Examples
     ///
@@ -134,7 +143,7 @@ impl u128 {
         self.hi
     }
 
-    /// Convert this number to signed with wrapping.
+    /// Converts this number to signed with wrapping.
     ///
     /// # Examples
     ///
@@ -149,6 +158,12 @@ impl u128 {
     /// ```
     pub fn as_i128(self) -> i128 {
         i128::from_parts(self.hi as i64, self.lo)
+    }
+
+    /// Converts this number to the built-in 128-bit integer type.
+    #[cfg(extprim_channel="unstable")]
+    pub fn as_built_in(self) -> ::rustc_i128::u128 {
+        (self.hi as ::rustc_i128::u128) << 64 | self.lo as ::rustc_i128::u128
     }
 }
 
@@ -1560,6 +1575,13 @@ impl From<u64> for u128 {
     }
 }
 
+#[cfg(extprim_channel="unstable")]
+impl From<::rustc_i128::u128> for u128 {
+    fn from(arg: ::rustc_i128::u128) -> Self {
+        u128::from_built_in(arg)
+    }
+}
+
 #[cfg(test)]
 mod conv_tests {
     use u128::{u128, MAX};
@@ -1571,6 +1593,13 @@ mod conv_tests {
         assert_eq!(u128::new(1).to_f64(), Some(1.0f64));
         assert_eq!(u128::new(2).to_f64(), Some(2.0f64));
         assert_eq!(MAX.to_f64(), Some(340282366920938463463374607431768211455.0f64));
+    }
+
+    #[cfg(extprim_channel="unstable")]
+    #[test]
+    fn test_builtin_u128_to_u128() {
+        assert_eq!(u128::from_built_in(0x35d2c4473082b8c1_8b704240ca1021b8u128), u128::from_parts(0x35d2c4473082b8c1, 0x8b704240ca1021b8));
+        assert_eq!(u128::from_parts(0x35d2c4473082b8c1, 0x8b704240ca1021b8).as_built_in(), 0x35d2c4473082b8c1_8b704240ca1021b8u128);
     }
 }
 
@@ -1956,8 +1985,8 @@ mod prim_int_tests {
         assert_eq!(None, MAX.checked_mul(MAX));
         assert_eq!(None, MAX.checked_mul(u128::new(2)));
         assert_eq!(None, u128::from_parts(1, 0).checked_mul(u128::from_parts(1, 0)));
-        assert_eq!(Some(u128::from_parts(u64::MAX-1, 1)),
-                    u128::new(u64::MAX).checked_mul(u128::new(u64::MAX)));
+        let res = u128::from_parts(u64::MAX-1, 1);
+        assert_eq!(Some(res), u128::new(u64::MAX).checked_mul(u128::new(u64::MAX)));
     }
 
     #[test]

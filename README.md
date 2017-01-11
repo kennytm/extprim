@@ -7,12 +7,15 @@ extprim
 [![crates.io](http://meritbadge.herokuapp.com/extprim)](https://crates.io/crates/extprim)
 [![MIT / Apache 2.0](https://img.shields.io/badge/license-MIT%20%2f%20Apache%202.0-blue.svg)](./LICENSE-APACHE.txt)
 
-Extra primitive types. Currently includes:
+> *Thanks to [RFC 1504 “int128”](https://github.com/rust-lang/rfcs/blob/master/text/1504-int128.md), you can use `i128`
+> and `u128` directly on nightly Rust starting from 1.16. Using the built-in types are preferred.*
+
+Extra primitive types for stable Rust. Currently includes:
 
 * `u128` (unsigned 128-bit integers)
 * `i128` (signed 128-bit integers)
 
-[Documentation](https://kennytm.github.io/extprim/extprim/index.html)
+[Documentation](https://docs.rs/extprim)
 
 You may also find other primitive types in other crates:
 
@@ -27,11 +30,11 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.1.0"
+extprim = "1.2.0"
 ```
 
 If you want to use the `u128!()` and `i128!()` macros, please include the `syntex_literals` plugin.
-Details are explained in the [documentation](https://kennytm.github.io/extprim/extprim_literals/index.html).
+Details are explained in the [documentation](https://docs.rs/extprim_literals).
 
 Example
 -------

@@ -51,16 +51,19 @@
 //! }
 //! ```
 
-#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, const_fn))]
+#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, const_fn, i128_type))]
 // feature requirement:
 //  - asm: to provide a fast implementation of u64_long_mul in x86_64
 //  - test: benchmarking
 //  - specialization: to allow ToExtraPrimitive inherit from ToPrimitive, while ensuring conversion
 //                    between the 128-bit types remain correct
+//  - const_fn: Create 128-bit constants
+//  - i128_type: Conversion between built-in 128-bit integer types.
 
 #![cfg_attr(not(feature="use-std"), no_std)]
 
 #[cfg(extprim_channel="unstable")] extern crate test;
+#[cfg(extprim_channel="unstable")] extern crate rustc_i128;
 
 #[cfg(feature="use-std")] extern crate core;
 #[cfg(not(feature="use-std"))] extern crate core as std;

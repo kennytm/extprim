@@ -1,28 +1,10 @@
 //! Literal macros for `extprim`.
 //!
-//! This crate provides a compiler plugin (on nightly) or syntex extension (on stable) so that the
-//! `extprim` types can be constructed at compile-time using the `i128!()` and `u128!()` macros.
+//! This crate provides a syntex extension (on stable) so that the `extprim` types can be
+//! constructed at compile-time using the `i128!()` and `u128!()` macros.
 //!
-//! Setup as compiler plugin (nightly)
-//! ==================================
-//!
-//! Add `extprim_literals` to the dev-dependencies in `Cargo.toml`:
-//!
-//! ```toml
-//! [dev-dependencies]
-//! extprim_literals = "1.1.0"
-//! ```
-//!
-//! Then just use the plugin:
-//!
-//! ```rust
-//! #![feature(plugin)]
-//! #![plugin(extprim_literals)]
-//!
-//! use extprim::u128::u128;
-//!
-//! const TEN: u128 = u128!(10);
-//! ```
+//! Since built-in u128/i128 types are provided on nightly (Rust 1.16), the `i128!()` and `u128!()`
+//! macros will simply cast the input from these built-in types.
 //!
 //! Setup as syntex extension (stable)
 //! ==================================
@@ -35,8 +17,8 @@
 //! build = "build.rs"
 //!
 //! [build-dependencies]
-//! extprim_literals = "1.1.0"
-//! syntex = "0.36.0"
+//! extprim_literals = "1.2.0"
+//! syntex = "0.48.0"
 //! ```
 //!
 //! Register `extprim_literals` to `syntex` in `build.rs`:
@@ -63,6 +45,7 @@
 //! Use the macros in `src/consts.rs.in`:
 //!
 //! ```ignore
+//! #[macro_use] extern crate extprim_literals;
 //! use extprim::u128::u128;
 //!
 //! const TEN: u128 = u128!(10);
@@ -74,29 +57,24 @@
 //! include!(concat!(env!("OUT_DIR"), "/consts.rs"));
 //! ```
 
-#![cfg_attr(extprim_literals_channel="unstable", feature(plugin_registrar, rustc_private))]
-#[cfg(extprim_literals_channel="unstable")] extern crate rustc_plugin;
-#[cfg(extprim_literals_channel="unstable")] extern crate syntax;
-
 #[cfg(extprim_literals_channel="stable")] extern crate syntex_syntax as syntax;
 
 extern crate syntex;
 extern crate extprim;
 
-use syntax::ext::base::{ExtCtxt, MacResult, MacEager, DummyResult};
-use syntax::ext::build::AstBuilder;
-use syntax::codemap::{Span, Spanned, respan};
-use syntax::ast::{Name, LitKind, LitIntType, UintTy};
-#[cfg(extprim_literals_channel="stable")] use syntax::ast::TokenTree;
-#[cfg(extprim_literals_channel="unstable")] use syntax::tokenstream::TokenTree;
-use syntax::parse::token::{Token, Lit, BinOpToken};
+#[cfg(extprim_literals_channel="stable")] use syntax::ext::base::{ExtCtxt, MacResult, MacEager, DummyResult};
+#[cfg(extprim_literals_channel="stable")] use syntax::ext::build::AstBuilder;
+#[cfg(extprim_literals_channel="stable")] use syntax::codemap::{Span, Spanned, respan};
+#[cfg(extprim_literals_channel="stable")] use syntax::ast::{Name, LitKind, LitIntType, UintTy};
+#[cfg(extprim_literals_channel="stable")] use syntax::tokenstream::TokenTree;
+#[cfg(extprim_literals_channel="stable")] use syntax::parse::token::{Token, Lit, BinOpToken};
 
-use extprim::u128::u128;
-use extprim::i128::i128;
-use extprim::traits::parse_rust_int_lit;
+#[cfg(extprim_literals_channel="stable")] use extprim::u128::u128;
+#[cfg(extprim_literals_channel="stable")] use extprim::i128::i128;
+#[cfg(extprim_literals_channel="stable")] use extprim::traits::parse_rust_int_lit;
 
-use std::num::ParseIntError;
-use std::error::Error;
+#[cfg(extprim_literals_channel="stable")] use std::num::ParseIntError;
+#[cfg(extprim_literals_channel="stable")] use std::error::Error;
 
 /// Creates an unsigned 128-bit integer at compile time. The content can be any integer literals
 /// supported by Rust, e.g.
@@ -108,10 +86,10 @@ use std::error::Error;
 /// u128!(0o3653247246101356646675471111622746760005231);
 /// u128!(0b11001001000000101100010000101110100001100110100100110110000100011110110110010111);
 /// ```
-#[cfg(feature="doc_only")]
+#[cfg(any(feature="doc_only", extprim_literals_channel="unstable"))]
 #[macro_export]
 macro_rules! u128 {
-    ($lit:expr) => { ... };
+    ($lit:expr) => { ::extprim::u128::u128::from_built_in($lit) };
 }
 
 /// Creates a signed 128-bit integer at compile time. The content can be any integer literals
@@ -125,20 +103,12 @@ macro_rules! u128 {
 /// i128!(0o1_151760_574675_745253_103376_166404_235110_762614);
 /// i128!(-0b11000111001101001100001010010111110101000101011011011111101111111111110101110110);
 /// ```
-#[cfg(feature="doc_only")]
+#[cfg(any(feature="doc_only", extprim_literals_channel="unstable"))]
 #[macro_export]
 macro_rules! i128 {
-    ($lit:expr) => { ... };
-    (+$lit:expr) => { ... };
-    (-$lit:expr) => { ... };
-}
-
-#[cfg(extprim_literals_channel="unstable")]
-#[plugin_registrar]
-#[doc(hidden)]
-pub fn plugin_registrar(reg: &mut rustc_plugin::Registry) {
-    reg.register_macro("u128", create_u128);
-    reg.register_macro("i128", create_i128);
+    (+$lit:expr) => { ::extprim::i128::i128::from_built_in($lit) };
+    ($lit:expr) => { ::extprim::i128::i128::from_built_in($lit) };
+    (-$lit:expr) => { ::extprim::i128::i128::from_built_in(-$lit) };
 }
 
 /// Register the `extprim_literals` macros to the `syntex` registry.
@@ -155,8 +125,10 @@ pub fn register(reg: &mut syntex::Registry) {
     reg.add_macro("i128", create_i128);
 }
 
+#[cfg(extprim_literals_channel="stable")]
 const U64_TYPE: LitIntType = LitIntType::Unsigned(UintTy::U64);
 
+#[cfg(extprim_literals_channel="stable")]
 enum ParseError {
     ParseIntError(ParseIntError),
     ExpectingIntegerLiteral,
@@ -165,6 +137,7 @@ enum ParseError {
     InvalidI128Content,
 }
 
+#[cfg(extprim_literals_channel="stable")]
 impl ParseError {
     fn description(&self) -> &str {
         match *self {
@@ -178,6 +151,7 @@ impl ParseError {
 }
 
 /// Translate `u128!(1234567…)` to `::u128::u128 { lo: …, hi: … }`
+#[cfg(extprim_literals_channel="stable")]
 fn create_u128<'c>(cx: &'c mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'c> {
     match parse_u128(sp, tts) {
         Err(e) => {
@@ -202,6 +176,7 @@ fn create_u128<'c>(cx: &'c mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacR
 }
 
 /// Translate `i128!(1234567…)` to `i128::i128(u128::u128 { hi: …, lo: … })`.
+#[cfg(extprim_literals_channel="stable")]
 fn create_i128<'c>(cx: &'c mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'c> {
     match parse_i128(sp, tts) {
         Err(e) => {
@@ -230,7 +205,7 @@ fn create_i128<'c>(cx: &'c mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacR
     }
 }
 
-
+#[cfg(extprim_literals_channel="stable")]
 fn parse_u128(sp: Span, tts: &[TokenTree]) -> Result<u128, Spanned<ParseError>> {
     if tts.len() != 1 {
         return Err(respan(sp, ParseError::InvalidU128Content));
@@ -240,7 +215,7 @@ fn parse_u128(sp: Span, tts: &[TokenTree]) -> Result<u128, Spanned<ParseError>> 
         .map_err(|e| respan(sp, ParseError::ParseIntError(e)))
 }
 
-
+#[cfg(extprim_literals_channel="stable")]
 fn parse_i128(sp: Span, tts: &[TokenTree]) -> Result<i128, Spanned<ParseError>> {
     let length = tts.len();
     if length == 0 || length > 2 {
@@ -258,7 +233,7 @@ fn parse_i128(sp: Span, tts: &[TokenTree]) -> Result<i128, Spanned<ParseError>> 
         .map_err(|e| respan(sp, ParseError::ParseIntError(e)))
 }
 
-
+#[cfg(extprim_literals_channel="stable")]
 fn extract_number_from_token_tree(t: &TokenTree) -> Result<Name, Spanned<ParseError>> {
     match *t {
         TokenTree::Token(_, Token::Literal(Lit::Integer(number), _)) => Ok(number),
