@@ -10,6 +10,10 @@ environment:
           ABI: msvc
         - RUST: 1.9.0
           ABI: gnu
+        - RUST: 1.14.0
+          ABI: msvc
+        - RUST: 1.14.0
+          ABI: gnu
         - RUST: nightly
           ABI: msvc
         - RUST: nightly
