@@ -63,7 +63,6 @@
 #![cfg_attr(not(feature="use-std"), no_std)]
 
 #[cfg(extprim_channel="unstable")] extern crate test;
-#[cfg(extprim_channel="unstable")] extern crate rustc_i128;
 
 #[cfg(feature="use-std")] extern crate core;
 #[cfg(not(feature="use-std"))] extern crate core as std;

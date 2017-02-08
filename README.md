@@ -30,10 +30,10 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.2.0"
+extprim = "1.2.1"
 ```
 
-If you want to use the `u128!()` and `i128!()` macros, please include the `syntex_literals` plugin.
+If you want to use the `u128!()` and `i128!()` macros, please include the `extprim_literals` plugin.
 Details are explained in the [documentation](https://docs.rs/extprim_literals).
 
 Example

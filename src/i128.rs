@@ -13,6 +13,7 @@ use u128::u128;
 use error;
 use traits::{ToExtraPrimitive, Wrapping};
 use format_buffer::FormatBuffer;
+#[cfg(extprim_channel="unstable")] use compiler_rt::builtins::{U128, I128};
 
 //{{{ Structure
 
@@ -58,8 +59,8 @@ impl i128 {
 
     /// Constructs a new 128-bit integer from the built-in 128-bit integer.
     #[cfg(extprim_channel="unstable")]
-    pub const fn from_built_in(value: ::rustc_i128::i128) -> i128 {
-        i128(u128::from_built_in(value as ::rustc_i128::u128))
+    pub const fn from_built_in(value: I128) -> i128 {
+        i128(u128::from_built_in(value as U128))
     }
 
     /// Constructs a new 128-bit integer from the high-64-bit and low-64-bit parts.
@@ -139,8 +140,8 @@ impl i128 {
 
     /// Converts this number to the built-in 128-bit integer type.
     #[cfg(extprim_channel="unstable")]
-    pub fn as_built_in(self) -> ::rustc_i128::i128 {
-        (self.high64() as ::rustc_i128::i128) << 64 | self.low64() as ::rustc_i128::i128
+    pub fn as_built_in(self) -> I128 {
+        (self.high64() as I128) << 64 | self.low64() as I128
     }
 }
 
@@ -1329,8 +1330,8 @@ impl From<i64> for i128 {
 }
 
 #[cfg(extprim_channel="unstable")]
-impl From<::rustc_i128::i128> for i128 {
-    fn from(arg: ::rustc_i128::i128) -> Self {
+impl From<I128> for i128 {
+    fn from(arg: I128) -> Self {
         i128::from_built_in(arg)
     }
 }

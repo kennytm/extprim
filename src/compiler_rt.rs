@@ -1,5 +1,11 @@
 pub use self::detail::{udiv128, umod128, udivmod128};
 
+#[cfg(extprim_channel="unstable")]
+pub mod builtins {
+    pub type I128 = i128;
+    pub type U128 = u128;
+}
+
 #[cfg(all(target_pointer_width="64", unix))]
 mod detail {
     use u128::u128;
