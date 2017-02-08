@@ -21,6 +21,7 @@ const I0N: i128 = i128!(-0);
 const I1: i128 = i128!(1);
 const I1P: i128 = i128!(+ 1);
 const I1N: i128 = i128!(- 1);
+const IMIN: i128 = i128!(-170141183460469231731687303715884105728);
 const IMAX: i128 = i128!(170141183460469231731687303715884105727);
 const I2: i128 = i128!(0x48e7f56608dd8c4d926f769042424b3e);
 const I3: i128 = i128!(-0x1c41ff3676b8022eeb2455bf0fc39bae);
@@ -49,6 +50,7 @@ fn test_literals_i() {
     assert_eq!(i128::from_parts(0, 1), I1);
     assert_eq!(i128::from_parts(0, 1), I1P);
     assert_eq!(i128::from_parts(-1, !0), I1N);
+    assert_eq!(i128::from_parts(i64::MIN, 0), IMIN);
     assert_eq!(i128::from_parts(i64::MAX, u64::MAX), IMAX);
     assert_eq!(i128::from_parts(5253437308935179341, 10551782813911370558), I2);
     assert_eq!(i128::from_parts(-2036189115933262383, 1502982096543310930), I3);
@@ -56,14 +58,6 @@ fn test_literals_i() {
     assert_eq!(i128::from_parts(-7339205793792238093, 3785825598875628669), I5);
     assert_eq!(i128::from_parts(-6341135028387656488, 7444861624918467816), I6);
     assert_eq!(i128::from_parts(4719528808248670532, 1624322789729401538), I7);
-}
-
-#[cfg(extprim_tests_channel="stable")]
-#[test]
-fn test_literals_imin() {
-    // Disabled on nightly due to https://github.com/rust-lang/rust/issues/38987
-    const IMIN: i128 = i128!(-170141183460469231731687303715884105728);
-    assert_eq!(i128::from_parts(i64::MIN, 0), IMIN);
 }
 
 // vim: ft=rust

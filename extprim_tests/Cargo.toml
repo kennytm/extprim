@@ -1,6 +1,6 @@
 [package]
 name = "extprim_tests"
-version = "1.2.0"
+version = "1.2.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Test case for extprim literals"
 repository = "https://github.com/kennytm/extprim"
@@ -14,7 +14,7 @@ include = [
 ]
 
 [dev-dependencies]
-extprim = { path = "../", version = "1.2.0" }
+extprim = { path = "../", version = "1.2.1" }
 extprim_literals = { path = "../extprim_literals", version = "1.2.0" }
 
 [build-dependencies]
