@@ -39,7 +39,7 @@ If you want to use the `u128!()` and `i128!()` macros, please include the `extpr
 # Cargo.toml
 [dependencies]
 extprim = "1.2.2"
-extprim_literals = "1.3.0"
+extprim_literals = "2.0.0"
 ```
 
 Example

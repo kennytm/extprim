@@ -17,5 +17,5 @@ name = "extprim_literals_macros"
 proc-macro = true
 
 [dependencies]
-extprim = { path = "../", version = "1.2.2" }
+extprim = { path = "../", version = "1.2" }
 procedural-masquerade = "0.1.1"

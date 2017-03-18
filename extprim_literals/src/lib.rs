@@ -10,7 +10,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! extprim_literals = "1.3.0"
+//! extprim_literals = "2.0.0"
 //! ```
 //!
 //! Use the macros in `src/consts.rs`:
@@ -92,5 +92,5 @@ macro_rules! i128 {
 }
 
 /// Provided for backward-compatibility only. This method does nothing.
-#[deprecated(since="1.3.0", note="plugin registration is no longer required, and this method is no-op now")]
+#[deprecated(since="2.0.0", note="plugin registration is no longer required, and this method is no-op now")]
 pub fn register<T>(_: T) {}
