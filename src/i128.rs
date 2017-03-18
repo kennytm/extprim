@@ -1942,7 +1942,7 @@ impl fmt::Display for i128 {
         } else {
             let mut buffer = [0u8; 39];
             let mut buf = FormatBuffer::new(&mut buffer);
-            try!(write!(&mut buf, "{}", self.0.wrapping_neg()));
+            write!(&mut buf, "{}", self.0.wrapping_neg())?;
             formatter.pad_integral(false, "", unsafe { buf.into_str() })
         }
     }

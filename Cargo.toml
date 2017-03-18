@@ -1,13 +1,13 @@
 [package]
 name = "extprim"
-version = "1.2.1"
+version = "1.2.2"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
 license = "MIT OR Apache-2.0"
 keywords = ["primitives","u128","i128"]
 categories = ["algorithms"]
-documentation = "https://kennytm.github.io/extprim/extprim/index.html"
+documentation = "https://docs.rs/extprim"
 build = "build.rs"
 
 include = [
@@ -18,15 +18,22 @@ include = [
     "LICENSE*.txt",
 ]
 
+[badges]
+travis-ci = { repository = "kennytm/extprim" }
+appveyor = { repository = "kennytm/extprim" }
+
 [workspace]
-members = ["extprim_literals", "extprim_tests"]
+members = ["extprim_literals", "extprim_literals_macros", "extprim_tests"]
 
 [dependencies]
 rand = { version = "0.3.15", optional = true }
-num-traits = "0.1.36"
+num-traits = "0.1.37"
+
+[dev-dependencies]
+extprim_literals = { version = "2.0.0", path = "./extprim_literals" }
 
 [build-dependencies]
-rustc_version = "0.1.7"
+rustc_version = "0.2.0"
 
 [features]
 default = ["use-std"]

@@ -30,16 +30,23 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.2.1"
+extprim = "1.2.2"
 ```
 
 If you want to use the `u128!()` and `i128!()` macros, please include the `extprim_literals` plugin.
-Details are explained in the [documentation](https://docs.rs/extprim_literals).
+
+```toml
+# Cargo.toml
+[dependencies]
+extprim = "1.2.2"
+extprim_literals = "1.3.0"
+```
 
 Example
 -------
 
 ```rust
+#[macro_use] extern crate extprim_literals;
 extern crate extprim;
 
 use std::str::FromStr;
@@ -51,11 +58,16 @@ fn main() {
     let b = i128::new(10).pow(38);
             // 64-bit integers can be directly new'ed
     assert_eq!(a, b);
+
     let c = i128::from_parts(5421010862427522170, 687399551400673280);
             // represent using the higher- and lower-64-bit parts
     let d = c - a;
             // standard operators like +, -, *, /, %, etc. work as expected.
     assert_eq!(d, i128::zero());
+
+    const e: i128 = i128!(100000000000000000000000000000000000000);
+            // use the literal macros
+    assert_eq!(a, e);
 }
 ```
 

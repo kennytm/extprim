@@ -2103,10 +2103,10 @@ impl u128 {
         let radix64 = radix as u64;
 
         for c in src.chars() {
-            let digit = try!(c.to_digit(radix).ok_or_else(error::invalid_digit));
-            let int_result = try!(result.checked_mul_64(radix64).ok_or_else(error::overflow));
+            let digit = c.to_digit(radix).ok_or_else(error::invalid_digit)?;
+            let int_result = result.checked_mul_64(radix64).ok_or_else(error::overflow)?;
             let digit128 = u128::new(digit as u64);
-            result = try!(int_result.checked_add(digit128).ok_or_else(error::overflow));
+            result = int_result.checked_add(digit128).ok_or_else(error::overflow)?;
         }
 
         Ok(result)
@@ -2207,10 +2207,10 @@ impl fmt::Display for u128 {
 
             let (mid, lo) = div_rem(*self, TEN19);
             if mid.hi == 0 {
-                try!(write!(&mut buf, "{}{:019}", mid.lo, lo.lo));
+                write!(&mut buf, "{}{:019}", mid.lo, lo.lo)?;
             } else {
                 let (hi, mid) = div_rem(mid, TEN19);
-                try!(write!(&mut buf, "{}{:019}{:019}", hi.lo, mid.lo, lo.lo));
+                write!(&mut buf, "{}{:019}{:019}", hi.lo, mid.lo, lo.lo)?;
             }
 
             formatter.pad_integral(true, "", unsafe { buf.into_str() })
@@ -2232,7 +2232,7 @@ impl fmt::Binary for u128 {
             let mut buffer = [0u8; 128];
             let mut buf = FormatBuffer::new(&mut buffer);
 
-            try!(write!(&mut buf, "{:b}{:064b}", self.hi, self.lo));
+            write!(&mut buf, "{:b}{:064b}", self.hi, self.lo)?;
             formatter.pad_integral(true, "0b", unsafe { buf.into_str() })
         }
     }
@@ -2246,7 +2246,7 @@ impl fmt::LowerHex for u128 {
             let mut buffer = [0u8; 32];
             let mut buf = FormatBuffer::new(&mut buffer);
 
-            try!(write!(&mut buf, "{:x}{:016x}", self.hi, self.lo));
+            write!(&mut buf, "{:x}{:016x}", self.hi, self.lo)?;
             formatter.pad_integral(true, "0x", unsafe { buf.into_str() })
         }
     }
@@ -2260,7 +2260,7 @@ impl fmt::UpperHex for u128 {
             let mut buffer = [0u8; 32];
             let mut buf = FormatBuffer::new(&mut buffer);
 
-            try!(write!(&mut buf, "{:X}{:016X}", self.hi, self.lo));
+            write!(&mut buf, "{:X}{:016X}", self.hi, self.lo)?;
             formatter.pad_integral(true, "0x", unsafe { buf.into_str() })
         }
     }
@@ -2278,9 +2278,9 @@ impl fmt::Octal for u128 {
         let mut buf = FormatBuffer::new(&mut buffer);
 
         if hi != 0 {
-            try!(write!(&mut buf, "{:o}{:021o}{:021o}", hi, mid, lo));
+            write!(&mut buf, "{:o}{:021o}{:021o}", hi, mid, lo)?;
         } else if mid != 0 {
-            try!(write!(&mut buf, "{:o}{:021o}", mid, lo));
+            write!(&mut buf, "{:o}{:021o}", mid, lo)?;
         } else {
             return lo.fmt(formatter);
         }
