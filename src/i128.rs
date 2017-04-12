@@ -1215,6 +1215,10 @@ mod div_rem_tests {
         assert_eq!(nine / -two, -four);
         assert_eq!((-nine) / two, -four);
         assert_eq!((-nine) / -two, four);
+
+        // Test case copied from https://github.com/rust-lang/rust/issues/41228
+        assert_eq!(i128::from_parts(-4746635337927214985, 8887618921150887885) /
+                    i128::from_parts(4569140803224985180, 0), -ONE);
     }
 
     #[test]

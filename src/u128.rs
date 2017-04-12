@@ -1451,6 +1451,9 @@ mod div_rem_tests {
         assert_eq!(u128::from_parts(10328265298226767242, 6197012475834382470) /
                     u128::from_parts(3051664430350890703, 4511783754636171344),
                     u128::new(3));
+
+        // Test case copied from https://github.com/rust-lang/rust/issues/41228
+        assert_eq!(u128::from_parts(3, 1) / u128::from_parts(3, 0), ONE);
     }
 
     #[test]
