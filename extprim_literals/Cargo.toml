@@ -18,5 +18,3 @@ include = [
 extprim_literals_macros = { path = "../extprim_literals_macros", version = "2.0" }
 procedural-masquerade = "0.1"
 
-[features]
-doc_only = [] # see rust-lang/rfcs#834.
