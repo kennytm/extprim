@@ -16,31 +16,33 @@ os:
 
 rust:
     - 1.16.0
+    - 1.18.0
     - beta
     - nightly
 
 env:
-    matrix:
-        - ARCH=x86_64
-        - ARCH=i686
+    - ARCH=x86_64
+    - ARCH=i686
+
+matrix:
+    fast_finish: true
 
 install:
     - if [ "$TRAVIS_OS_NAME" = 'linux' ]; then OS=unknown-linux-gnu; else OS=apple-darwin; fi
     - export HOST=$ARCH-$OS
-    - curl -SfLO "https://static.rust-lang.org/rustup/dist/$HOST/rustup-init"
-    - chmod u+x rustup-init
-    - ./rustup-init -y --default-host "$HOST" --default-toolchain "$TRAVIS_RUST_VERSION"
     - export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
+    - export FLAGS=""
+    - if [ "$ARCH" != x86_64 ]; then rustup target add "$HOST"; export FLAGS="--target $HOST"; fi
     - rustc -vV
     - cargo -vV
 
 script:
-    - cargo build --no-default-features
-    - cargo test --no-default-features
-    - cargo build
-    - cargo test
-    - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench; fi
-    - cargo test --manifest-path extprim_tests/Cargo.toml
+    - cargo update
+    - cargo build $FLAGS --all --no-default-features
+    - cargo test $FLAGS --all --no-default-features
+    - cargo build $FLAGS --all --all-features
+    - cargo test $FLAGS --all --all-features
+    - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --all; fi
 
 after_success:
     - cargo install cargo-kcov

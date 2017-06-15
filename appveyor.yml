@@ -4,11 +4,19 @@ platform:
     - Win32
     - x64
 
+branches:
+    only:
+        - master
+
 environment:
     matrix:
         - RUST: 1.16.0
           ABI: msvc
         - RUST: 1.16.0
+          ABI: gnu
+        - RUST: 1.18.0
+          ABI: msvc
+        - RUST: 1.18.0
           ABI: gnu
         - RUST: beta
           ABI: msvc

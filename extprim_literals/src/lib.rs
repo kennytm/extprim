@@ -10,16 +10,18 @@
 //!
 //! ```toml
 //! [dependencies]
-//! extprim_literals = "2.0.0"
+//! extprim_literals = "2.0"
 //! ```
 //!
 //! Use the macros in `src/consts.rs`:
 //!
-//! ```ignore
+//! ```
 //! #[macro_use] extern crate extprim_literals;
+//! extern crate extprim;
 //! use extprim::u128::u128;
 //!
 //! const TEN: u128 = u128!(10);
+//! # fn main() {}
 //! ```
 
 #[allow(unused_imports)] // <- why do we need this at all?
@@ -34,11 +36,17 @@ define_invoke_proc_macro!(internal_extprim_literals_macros_invoke);
 /// supported by Rust, e.g.
 ///
 /// ```
+/// #[macro_use] extern crate extprim_literals;
+/// extern crate extprim;
+/// use extprim::u128::u128;
+///
+/// # fn main() {
 /// u128!(190645052318211650775886739373212217031);
 /// u128!(290_016_114_491_568_400_953_264_683_755_668_101_244);
 /// u128!(0x1755_7146_02da_b606_e059_515e_7938_5189);
 /// u128!(0o3653247246101356646675471111622746760005231);
 /// u128!(0b11001001000000101100010000101110100001100110100100110110000100011110110110010111);
+/// # }
 /// ```
 #[macro_export]
 macro_rules! u128 {
@@ -55,13 +63,19 @@ macro_rules! u128 {
 /// Creates a signed 128-bit integer at compile time. The content can be any integer literals
 /// supported by Rust, e.g.
 ///
-/// ```no_run
+/// ```
+/// #[macro_use] extern crate extprim_literals;
+/// extern crate extprim;
+/// use extprim::i128::i128;
+///
+/// # fn main() {
 /// i128!(123623219786789911069641050508607316353);
 /// i128!(+1241909465635371210237387091769850650);
 /// i128!(-42128403654828209595896121373164578595);
 /// i128!(-0x34c1b7a2_2955e5bb_03cc1a88_342b9e8d);
 /// i128!(0o1_151760_574675_745253_103376_166404_235110_762614);
 /// i128!(-0b11000111001101001100001010010111110101000101011011011111101111111111110101110110);
+/// # }
 /// ```
 #[macro_export]
 macro_rules! i128 {
