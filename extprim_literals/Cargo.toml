@@ -1,21 +1,22 @@
 [package]
 name = "extprim_literals"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Plugin for creating extra primitive types literals (u128!(n), i128!(n))"
 repository = "https://github.com/kennytm/extprim"
-license = "MIT OR Apache-2.0"
+license = "MIT/Apache-2.0"
 keywords = ["primitives","u128","i128"]
 documentation = "https://docs.rs/extprim/"
 
 include = [
     "src/*.rs",
     "Cargo.toml",
+    "LICENSE-*.txt",
 ]
 
 [dependencies]
-extprim_literals_macros = { path = "../extprim_literals_macros", version = "2.0.0" }
-procedural-masquerade = "0.1.1"
+extprim_literals_macros = { path = "../extprim_literals_macros", version = "2.0" }
+procedural-masquerade = "0.1"
 
 [features]
 doc_only = [] # see rust-lang/rfcs#834.
