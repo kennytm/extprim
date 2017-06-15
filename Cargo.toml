@@ -36,6 +36,6 @@ extprim_literals = { version = "2.0.0", path = "./extprim_literals" }
 rustc_version = "0.2.0"
 
 [features]
-default = ["use-std"]
-use-std = ["rand"]
+default = ["use-std", "rand"]
+use-std = []
 
