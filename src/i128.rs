@@ -6,7 +6,7 @@ use std::ops::*;
 use std::cmp::{PartialOrd, Ord, Ordering};
 use std::num::ParseIntError;
 
-#[cfg(feature="use-std")] use rand::{Rand, Rng};
+#[cfg(feature="rand")] use rand::{Rand, Rng};
 use num_traits::*;
 
 use u128::u128;
@@ -162,7 +162,7 @@ mod structure_tests {
 
 //{{{ Rand
 
-#[cfg(feature="use-std")]
+#[cfg(feature="rand")]
 impl Rand for i128 {
     fn rand<R: Rng>(rng: &mut R) -> i128 {
         i128(u128::rand(rng))

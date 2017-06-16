@@ -1,15 +1,16 @@
 [package]
 name = "extprim_literals_macros"
-version = "2.0.0"
+version = "2.0.1"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Internal crate to support `extprim_literals`. You typically don't need this crate directly."
 repository = "https://github.com/kennytm/extprim"
-license = "MIT OR Apache-2.0"
+license = "MIT/Apache-2.0"
 documentation = "https://docs.rs/extprim/"
 
 include = [
     "src/*.rs",
     "Cargo.toml",
+    "LICENSE-*.txt",
 ]
 
 [lib]
@@ -18,4 +19,4 @@ proc-macro = true
 
 [dependencies]
 extprim = { path = "../", version = "1.2" }
-procedural-masquerade = "0.1.1"
+procedural-masquerade = "0.1"

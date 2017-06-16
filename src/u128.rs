@@ -8,7 +8,7 @@ use std::cmp::{PartialOrd, Ord, Ordering};
 use std::convert::From;
 use std::num::ParseIntError;
 
-#[cfg(feature="use-std")] use rand::{Rand, Rng};
+#[cfg(feature="rand")] use rand::{Rand, Rng};
 use num_traits::*;
 
 use i128::i128;
@@ -172,7 +172,7 @@ impl u128 {
 
 //{{{ Rand
 
-#[cfg(feature="use-std")]
+#[cfg(feature="rand")]
 impl Rand for u128 {
     fn rand<R: Rng>(rng: &mut R) -> u128 {
         let (lo, hi) = rng.gen();

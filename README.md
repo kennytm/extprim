@@ -30,7 +30,7 @@ Usage
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.2.2"
+extprim = "1.3"
 ```
 
 If you want to use the `u128!()` and `i128!()` macros, please include the `extprim_literals` plugin.
@@ -38,8 +38,8 @@ If you want to use the `u128!()` and `i128!()` macros, please include the `extpr
 ```toml
 # Cargo.toml
 [dependencies]
-extprim = "1.2.2"
-extprim_literals = "2.0.0"
+extprim = "1.3"
+extprim_literals = "2.0"
 ```
 
 Example

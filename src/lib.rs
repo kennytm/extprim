@@ -72,7 +72,7 @@
 
 #[cfg(feature="use-std")] extern crate core;
 #[cfg(not(feature="use-std"))] extern crate core as std;
-#[cfg(feature="use-std")] extern crate rand;
+#[cfg(feature="rand")] extern crate rand;
 extern crate num_traits;
 
 #[macro_use] mod forward;

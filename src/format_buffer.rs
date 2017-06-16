@@ -31,6 +31,7 @@ impl<'a> fmt::Write for FormatBuffer<'a> {
     }
 }
 
+#[cfg(test)]
 macro_rules! assert_fmt_eq {
     ($expected:expr, $max_len:expr, $($args:expr),*) => {
         {

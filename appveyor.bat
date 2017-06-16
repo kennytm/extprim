@@ -44,21 +44,17 @@ CL
 rustc --version
 cargo --version
 
-cargo build --no-default-features
+cargo build --all --no-default-features
 IF %ERRORLEVEL% NEQ 0 EXIT 1
 
-cargo test --no-default-features
+cargo test --all --no-default-features
 IF %ERRORLEVEL% NEQ 0 EXIT 1
 
-cargo build
+cargo build --all --all-features
 IF %ERRORLEVEL% NEQ 0 EXIT 1
 
-cargo test
+cargo test --all --all-features
 IF %ERRORLEVEL% NEQ 0 EXIT 1
 
-cargo bench
+cargo bench --all-features
 IF %ERRORLEVEL% NEQ 0 EXIT 1
-
-cargo test --manifest-path extprim_tests\Cargo.toml
-IF %ERRORLEVEL% NEQ 0 EXIT 1
-
