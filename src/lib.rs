@@ -70,6 +70,10 @@
 
 #[cfg(extprim_channel="unstable")] extern crate test;
 
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+
 #[cfg(feature="use-std")] extern crate core;
 #[cfg(not(feature="use-std"))] extern crate core as std;
 #[cfg(feature="rand")] extern crate rand;

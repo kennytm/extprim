@@ -39,6 +39,7 @@ pub const ZERO: u128 = MIN;
 pub const ONE: u128 = u128 { lo: 1, hi: 0 };
 
 /// An unsigned 128-bit number.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Default, Copy, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
