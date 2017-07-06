@@ -36,6 +36,7 @@ pub const ZERO: i128 = i128(::u128::ZERO);
 pub const ONE: i128 = i128(::u128::ONE);
 
 /// An signed 128-bit number.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Default, Copy, Clone, Hash, PartialEq, Eq)]
 #[repr(C)]
 #[allow(non_camel_case_types)]
