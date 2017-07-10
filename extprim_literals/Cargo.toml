@@ -1,6 +1,6 @@
 [package]
 name = "extprim_literals"
-version = "2.0.2"
+version = "2.0.3"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Plugin for creating extra primitive types literals (u128!(n), i128!(n))"
 repository = "https://github.com/kennytm/extprim"
@@ -19,4 +19,4 @@ extprim_literals_macros = { path = "../extprim_literals_macros", version = "2.0"
 procedural-masquerade = "0.1"
 
 [dev-dependencies]
-extprim = { path = "../", version = "1.3" }
+extprim = { path = "../", version = "1" }
