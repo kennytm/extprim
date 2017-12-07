@@ -1,18 +1,19 @@
 //! Signed 128-bit integer.
 
-use std::str::FromStr;
+use std::cmp::Ordering;
 use std::fmt::{self, Write};
-use std::ops::*;
-use std::cmp::{PartialOrd, Ord, Ordering};
+use std::iter::{Product, Sum};
 use std::num::ParseIntError;
+use std::ops::*;
+use std::str::FromStr;
 
 #[cfg(feature="rand")] use rand::{Rand, Rng};
 use num_traits::*;
 
-use u128::u128;
 use error;
-use traits::{ToExtraPrimitive, Wrapping};
 use format_buffer::FormatBuffer;
+use traits::{ToExtraPrimitive, Wrapping};
+use u128::u128;
 #[cfg(extprim_channel="unstable")] use compiler_rt::builtins::{U128, I128};
 
 //{{{ Structure
@@ -1978,6 +1979,125 @@ mod show_tests {
 
         // Sanity test
         assert_fmt_eq!("ff", 2, "{:x}", -1i8);
+    }
+}
+
+//}}}
+
+//{{{ Sum, Product
+
+impl Sum for i128 {
+    fn sum<I>(iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        iter.fold(ZERO, Add::add)
+    }
+}
+
+impl Product for i128 {
+    fn product<I>(iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        iter.fold(ONE, Mul::mul)
+    }
+}
+
+impl<'a> Sum<&'a i128> for i128 {
+    fn sum<I>(iter: I) -> Self
+        where I: Iterator<Item = &'a Self>
+    {
+        iter.fold(ZERO, |acc, elem| acc + *elem)
+    }
+}
+
+impl<'a> Product<&'a i128> for i128 {
+    fn product<I>(iter: I) -> Self
+        where I: Iterator<Item = &'a Self>
+    {
+        iter.fold(ONE, |acc, elem| acc * *elem)
+    }
+}
+
+#[cfg(test)]
+mod iter_tests {
+    use i128::{i128, ZERO, ONE, MIN, MAX};
+
+    #[test]
+    fn test_sum() {
+        // Sum<i128>
+        assert_eq!(ZERO, Vec::<i128>::new().into_iter().sum());
+        assert_eq!(ZERO, vec![ZERO, ZERO, ZERO].into_iter().sum());
+        assert_eq!(ZERO, vec![-ONE, ONE].into_iter().sum());
+        assert_eq!(ONE, vec![ONE].into_iter().sum());
+        assert_eq!(i128::from(3i64), vec![ONE, ONE, ONE].into_iter().sum());
+        assert_eq!(-ONE, vec![MAX, MIN].into_iter().sum());
+        assert_eq!(i128::from(2i64), vec![
+            i128::from(-3i64),
+            i128::from(10i64),
+            MIN,
+            MAX - i128::from(4i64),
+        ].into_iter().sum());
+        assert_eq!(MAX, vec![MAX].into_iter().sum());
+        assert_eq!(MIN, vec![MIN].into_iter().sum());
+        assert_eq!(i128::from_parts(7, 42), vec![i128::from_parts(7, 42)].into_iter().sum());
+
+        // Sum<&'a i128>
+        assert_eq!(ZERO, [].iter().sum());
+        assert_eq!(ZERO, [ZERO, ZERO, ZERO].iter().sum());
+        assert_eq!(ZERO, [-ONE, ONE].iter().sum());
+        assert_eq!(ONE, [ONE].iter().sum());
+        assert_eq!(i128::from(3i64), [ONE, ONE, ONE].iter().sum());
+        assert_eq!(-ONE, [MAX, MIN].iter().sum());
+        assert_eq!(i128::from(2i64), [
+            i128::from(-3i64),
+            i128::from(10i64),
+            MIN,
+            MAX - i128::from(4i64),
+        ].iter().sum());
+        assert_eq!(MAX, [MAX].iter().sum());
+        assert_eq!(MIN, [MIN].iter().sum());
+        assert_eq!(i128::from_parts(7, 42), [i128::from_parts(7, 42)].iter().sum());
+    }
+
+    #[test]
+    fn test_product() {
+        // Product<i128>
+        assert_eq!(ONE, Vec::<i128>::new().into_iter().product());
+        assert_eq!(ONE, vec![ONE, ONE, ONE, ONE, ONE].into_iter().product());
+        assert_eq!(ZERO, vec![MAX, ZERO, MIN, ONE].into_iter().product());
+        assert_eq!(MAX, vec![MAX].into_iter().product());
+        assert_eq!(MAX, vec![ONE, MAX].into_iter().product());
+        assert_eq!(MIN, vec![MIN].into_iter().product());
+        assert_eq!(MIN, vec![ONE, MIN].into_iter().product());
+        assert_eq!(MIN, vec![
+            i128::from(-0x1i64),
+            i128::from(0x2i64),
+            i128::from(0x4i64),
+            i128::from(0x10i64),
+            i128::from(0x100i64),
+            i128::from(0x10000i64),
+            i128::from(0x100000000i64),
+            i128::from_parts(0x1, 0x0),
+        ].into_iter().product());
+
+        // Product<&'a i128>
+        assert_eq!(ONE, [].iter().product());
+        assert_eq!(ONE, [ONE, ONE, ONE, ONE, ONE].iter().product());
+        assert_eq!(ZERO, [MAX, ZERO, MIN, ONE].iter().product());
+        assert_eq!(MAX, [MAX].iter().product());
+        assert_eq!(MAX, [ONE, MAX].iter().product());
+        assert_eq!(MIN, [MIN].iter().product());
+        assert_eq!(MIN, [ONE, MIN].iter().product());
+        assert_eq!(MIN, [
+            i128::from(-0x1i64),
+            i128::from(0x2i64),
+            i128::from(0x4i64),
+            i128::from(0x10i64),
+            i128::from(0x100i64),
+            i128::from(0x10000i64),
+            i128::from(0x100000000i64),
+            i128::from_parts(0x1, 0x0),
+        ].iter().product());
     }
 }
 
