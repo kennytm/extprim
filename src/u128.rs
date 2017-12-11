@@ -1,21 +1,21 @@
 //! Unsigned 128-bit integer.
 
+use std::cmp::Ordering;
 use std::fmt::{self, Write};
-use std::u64;
-use std::str::FromStr;
-use std::ops::*;
-use std::cmp::{PartialOrd, Ord, Ordering};
-use std::convert::From;
+use std::iter::{Product, Sum};
 use std::num::ParseIntError;
+use std::ops::*;
+use std::str::FromStr;
+use std::u64;
 
 #[cfg(feature="rand")] use rand::{Rand, Rng};
 use num_traits::*;
 
-use i128::i128;
 use compiler_rt::{udiv128, umod128, udivmod128};
 use error;
-use traits::{Wrapping, ToExtraPrimitive};
 use format_buffer::FormatBuffer;
+use i128::i128;
+use traits::{ToExtraPrimitive, Wrapping};
 #[cfg(extprim_channel="unstable")] use compiler_rt::builtins::U128;
 
 //{{{ Structure
@@ -2363,6 +2363,115 @@ mod show_tests {
                        "{:o}", u128::from_parts(18446744073709551615, 18446744073709551615));
         assert_fmt_eq!("2000000000000000000000000000000000000000000", 43,
                        "{:o}", u128::from_parts(9223372036854775808, 0));
+    }
+}
+
+//}}}
+
+//{{{ Sum, Product
+
+impl Sum for u128 {
+    fn sum<I>(iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        iter.fold(ZERO, Add::add)
+    }
+}
+
+impl Product for u128 {
+    fn product<I>(iter: I) -> Self
+        where I: Iterator<Item = Self>
+    {
+        //iter.fold(ONE, Mul::mul)
+        iter.fold(ONE, |acc, elem| {
+            println!(">>> {}, {} <<<", acc, elem);
+            acc * elem
+        })
+    }
+}
+
+impl<'a> Sum<&'a u128> for u128 {
+    fn sum<I>(iter: I) -> Self
+        where I: Iterator<Item = &'a Self>
+    {
+        iter.fold(ZERO, |acc, elem| acc + *elem)
+    }
+}
+
+impl<'a> Product<&'a u128> for u128 {
+    fn product<I>(iter: I) -> Self
+        where I: Iterator<Item = &'a Self>
+    {
+        iter.fold(ONE, |acc, elem| acc * *elem)
+    }
+}
+
+#[cfg(test)]
+mod iter_tests {
+    use u128::{u128, ZERO, ONE, MIN, MAX};
+
+    #[test]
+    fn test_sum() {
+        // Sum<u128>
+        assert_eq!(ZERO, Vec::<u128>::new().into_iter().sum());
+        assert_eq!(ZERO, vec![ZERO, ZERO, ZERO].into_iter().sum());
+        assert_eq!(ONE, vec![ONE].into_iter().sum());
+        assert_eq!(u128::from(3u64), vec![ONE, ONE, ONE].into_iter().sum());
+        assert_eq!(MAX, vec![MAX].into_iter().sum());
+        assert_eq!(MIN, vec![MIN].into_iter().sum());
+        assert_eq!(u128::from_parts(7, 42), vec![u128::from_parts(7, 42)].into_iter().sum());
+
+        // Sum<&'a u128>
+        assert_eq!(ZERO, [].iter().sum());
+        assert_eq!(ZERO, [ZERO, ZERO, ZERO].iter().sum());
+        assert_eq!(ONE, [ONE].iter().sum());
+        assert_eq!(u128::from(3u64), [ONE, ONE, ONE].iter().sum());
+        assert_eq!(MAX, [MAX].iter().sum());
+        assert_eq!(MIN, [MIN].iter().sum());
+        assert_eq!(u128::from_parts(7, 42), [u128::from_parts(7, 42)].iter().sum());
+    }
+
+    #[test]
+    fn test_product() {
+        // Product<u128>
+        assert_eq!(ONE, Vec::<u128>::new().into_iter().product());
+        assert_eq!(ONE, vec![ONE, ONE, ONE, ONE, ONE, ONE].into_iter().product());
+        assert_eq!(ZERO, vec![ONE, MAX, ZERO].into_iter().product());
+        assert_eq!(MAX, vec![MAX].into_iter().product());
+        assert_eq!(MAX, vec![ONE, MAX].into_iter().product());
+        assert_eq!(MIN, vec![MIN].into_iter().product());
+        assert_eq!(MIN, vec![ONE, MIN].into_iter().product());
+        assert_eq!(MAX, vec![
+            u128::from(3u64),
+            u128::from(5u64),
+            u128::from(17u64),
+            u128::from(257u64),
+            u128::from(641u64),
+            u128::from(65537u64),
+            u128::from(274177u64),
+            u128::from(6700417u64),
+            u128::from(67280421310721u64),
+        ].into_iter().product());
+
+        // Product<&'a u128>
+        assert_eq!(ONE, [].iter().product());
+        assert_eq!(ONE, [ONE, ONE, ONE, ONE, ONE, ONE].iter().product());
+        assert_eq!(ZERO, [ONE, MAX, ZERO].iter().product());
+        assert_eq!(MAX, [MAX].iter().product());
+        assert_eq!(MAX, [ONE, MAX].iter().product());
+        assert_eq!(MIN, [MIN].iter().product());
+        assert_eq!(MIN, [ONE, MIN].iter().product());
+        assert_eq!(MAX, [
+            u128::from(3u64),
+            u128::from(5u64),
+            u128::from(17u64),
+            u128::from(257u64),
+            u128::from(641u64),
+            u128::from(65537u64),
+            u128::from(274177u64),
+            u128::from(6700417u64),
+            u128::from(67280421310721u64),
+        ].iter().product());
     }
 }
 
