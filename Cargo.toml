@@ -29,7 +29,7 @@ coveralls = { repository = "kennytm/extprim" }
 members = ["extprim_literals", "extprim_literals_macros", "extprim_tests"]
 
 [dependencies]
-rand = { version = "0.3", optional = true }
+rand = { version = "0.4", optional = true }
 num-traits = "0.1"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 
