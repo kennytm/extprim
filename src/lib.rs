@@ -38,14 +38,12 @@
 //! Literal macros
 //! ==============
 //!
-//! The extra primitive types can be created via the literal macros using the `extprim_literals` compiler plugin in
-//! nightly, or with [syntex](https://crates.io/crates/syntex) in stable. Please check the [documentation of
-//! `extprim_literals`](../../extprim_literals/index.html) for details.
+//! The extra primitive types can be created via the literal macros using the `extprim_literals` procedural macro.
+//! Please check the [documentation of `extprim_literals`](../../extprim_literals/index.html) for details.
 //!
 //! ```ignore
-//! #![feature(plugin)]
-//! #![plugin(extprim_literals)]
-//!
+//! #![macro_use]
+//! extern crate extprim_literals;
 //! extern crate extprim;
 //!
 //! fn main() {

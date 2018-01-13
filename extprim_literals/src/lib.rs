@@ -10,13 +10,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! extprim_literals = "2.0"
+//! extprim_literals = "2"
 //! ```
 //!
 //! Use the macros in `src/consts.rs`:
 //!
 //! ```
-//! #[macro_use] extern crate extprim_literals;
+//! #[macro_use]
+//! extern crate extprim_literals;
 //! extern crate extprim;
 //! use extprim::u128::u128;
 //!
