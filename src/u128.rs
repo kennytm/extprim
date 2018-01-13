@@ -2382,11 +2382,7 @@ impl Product for u128 {
     fn product<I>(iter: I) -> Self
         where I: Iterator<Item = Self>
     {
-        //iter.fold(ONE, Mul::mul)
-        iter.fold(ONE, |acc, elem| {
-            println!(">>> {}, {} <<<", acc, elem);
-            acc * elem
-        })
+        iter.fold(ONE, Mul::mul)
     }
 }
 
