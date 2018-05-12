@@ -16,7 +16,7 @@ use error;
 use format_buffer::FormatBuffer;
 use i128::i128;
 use traits::{ToExtraPrimitive, Wrapping};
-#[cfg(extprim_channel="unstable")] use compiler_rt::builtins::U128;
+#[cfg(extprim_has_stable_i128)] use compiler_rt::builtins::{I128, U128};
 
 //{{{ Structure
 
@@ -75,6 +75,17 @@ impl u128 {
     }
 
     /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_has_stable_i128)]
+    #[cfg(extprim_channel="stable")]
+    pub fn from_built_in(value: U128) -> u128 {
+        u128 {
+            lo: (value & 0xffff_ffff_ffff_ffff) as u64,
+            hi: (value >> 64) as u64,
+        }
+    }
+
+    /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_has_stable_i128)]
     #[cfg(extprim_channel="unstable")]
     pub const fn from_built_in(value: U128) -> u128 {
         u128 {
@@ -163,7 +174,7 @@ impl u128 {
     }
 
     /// Converts this number to the built-in 128-bit integer type.
-    #[cfg(extprim_channel="unstable")]
+    #[cfg(extprim_has_stable_i128)]
     pub fn as_built_in(self) -> U128 {
         (self.hi as U128) << 64 | self.lo as U128
     }
@@ -420,13 +431,13 @@ mod add_sub_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_without_carry() {
-        u128::from_parts(0x80000000_00000000, 0) + u128::from_parts(0x80000000_00000000, 0);
+        let _ = u128::from_parts(0x80000000_00000000, 0) + u128::from_parts(0x80000000_00000000, 0);
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_with_carry() {
-        MAX + ONE;
+        let _ = MAX + ONE;
     }
 
     #[test]
@@ -469,7 +480,7 @@ mod add_sub_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow() {
-        ZERO - ONE;
+        let _ = ZERO - ONE;
     }
 }
 
@@ -789,13 +800,13 @@ mod shift_tests {
     #[test]
     #[should_panic(expected="shift operation overflowed")]
     fn test_shl_overflow() {
-        u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << 128;
+        let _ = u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) << 128;
     }
 
     #[test]
     #[should_panic(expected="shift operation overflowed")]
     fn test_shr_overflow() {
-        u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> 256;
+        let _ = u128::from_parts(0x1e5c7801b0e575f7, 0x53f09dac5b28f152) >> 256;
     }
 }
 
@@ -1110,25 +1121,25 @@ mod mul_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_10_10() {
-        u128::from_parts(1, 0) * u128::from_parts(1, 0);
+        let _ = u128::from_parts(1, 0) * u128::from_parts(1, 0);
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_80_80() {
-        u128::from_parts(0x80000000_00000000, 0) * u128::from_parts(0x80000000_00000000, 0);
+        let _ = u128::from_parts(0x80000000_00000000, 0) * u128::from_parts(0x80000000_00000000, 0);
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_max_max() {
-        MAX * MAX;
+        let _ = MAX * MAX;
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_overflow_max_2() {
-        MAX * u128::new(2);
+        let _ = MAX * u128::new(2);
     }
 
     #[test]
@@ -1142,7 +1153,7 @@ mod mul_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_mul_64_overflow_max_2() {
-        MAX * 2u64;
+        let _ = MAX * 2u64;
     }
 
 
@@ -1460,7 +1471,7 @@ mod div_rem_tests {
     #[test]
     #[should_panic(expected="attempted to divide by zero")]
     fn test_div_by_zero() {
-        ONE / ZERO;
+        let _ = ONE / ZERO;
     }
 
     #[test]
@@ -1479,7 +1490,7 @@ mod div_rem_tests {
     #[test]
     #[should_panic(expected="attempted remainder with a divisor of zero")]
     fn test_rem_by_zero() {
-        ONE % ZERO;
+        let _ = ONE % ZERO;
     }
 
     #[test]
@@ -1526,19 +1537,33 @@ impl ToPrimitive for u128 {
             self.lo.to_f64()
         }
     }
+
+    #[cfg(extprim_has_stable_i128)]
+    fn to_i128(&self) -> Option<I128> {
+        if self.hi < 0x80000000_00000000 {
+            Some(self.as_built_in() as I128)
+        } else {
+            None
+        }
+    }
+
+    #[cfg(extprim_has_stable_i128)]
+    fn to_u128(&self) -> Option<U128> {
+        Some(self.as_built_in())
+    }
 }
 
 impl FromPrimitive for u128 {
     fn from_u64(n: u64) -> Option<u128> {
-        n.to_u128()
+        ToExtraPrimitive::to_u128(&n)
     }
 
     fn from_i64(n: i64) -> Option<u128> {
-        n.to_u128()
+        ToExtraPrimitive::to_u128(&n)
     }
 
     fn from_f64(n: f64) -> Option<u128> {
-        n.to_u128()
+        ToExtraPrimitive::to_u128(&n)
     }
 }
 
@@ -1580,7 +1605,7 @@ impl From<u64> for u128 {
     }
 }
 
-#[cfg(extprim_channel="unstable")]
+#[cfg(extprim_has_stable_i128)]
 impl From<U128> for u128 {
     fn from(arg: U128) -> Self {
         u128::from_built_in(arg)
@@ -1600,8 +1625,8 @@ mod conv_tests {
         assert_eq!(MAX.to_f64(), Some(340282366920938463463374607431768211455.0f64));
     }
 
-    #[cfg(extprim_channel="unstable")]
     #[test]
+    #[cfg(extprim_has_stable_i128)]
     fn test_builtin_u128_to_u128() {
         assert_eq!(u128::from_built_in(0x35d2c4473082b8c1_8b704240ca1021b8u128), u128::from_parts(0x35d2c4473082b8c1, 0x8b704240ca1021b8));
         assert_eq!(u128::from_parts(0x35d2c4473082b8c1, 0x8b704240ca1021b8).as_built_in(), 0x35d2c4473082b8c1_8b704240ca1021b8u128);

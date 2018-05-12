@@ -1,6 +1,6 @@
 pub use self::detail::{udiv128, umod128, udivmod128};
 
-#[cfg(extprim_channel="unstable")]
+#[cfg(extprim_has_stable_i128)]
 pub mod builtins {
     pub type I128 = i128;
     pub type U128 = u128;

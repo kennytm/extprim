@@ -4,6 +4,7 @@ use num_traits::{ToPrimitive, NumCast, One, Float};
 #[cfg(feature="use-std")] use num_traits::Num;
 use u128::u128;
 use i128::i128;
+#[cfg(extprim_has_stable_i128)] use compiler_rt::builtins::{U128, I128};
 use std::ops::MulAssign;
 
 /// Trait for converting itself into the extra primitive types.
@@ -36,29 +37,48 @@ pub trait ToExtraPrimitive: ToPrimitive {
     fn to_i128(&self) -> Option<i128>;
 }
 
-impl ToExtraPrimitive for u64 {
-    fn to_u128(&self) -> Option<u128> {
-        Some(u128::new(*self))
-    }
+macro_rules! impl_to_extra_primitive_for_int {
+    ($ty:ty) => {
+        impl ToExtraPrimitive for $ty {
+            fn to_u128(&self) -> Option<u128> {
+                #[cfg(extprim_has_stable_i128)] {
+                    ToPrimitive::to_u128(self).map(u128::from_built_in)
+                }
+                #[cfg(not(extprim_has_stable_i128))] {
+                    self.to_u64().map(u128::new)
+                }
+            }
 
-    fn to_i128(&self) -> Option<i128> {
-        Some(u128::new(*self).as_i128())
-    }
-}
-
-impl ToExtraPrimitive for i64 {
-    fn to_u128(&self) -> Option<u128> {
-        if *self >= 0 {
-            Some(u128::new(*self as u64))
-        } else {
-            None
+            fn to_i128(&self) -> Option<i128> {
+                #[cfg(extprim_has_stable_i128)] {
+                    ToPrimitive::to_i128(self).map(i128::from_built_in)
+                }
+                #[cfg(not(extprim_has_stable_i128))] {
+                    match self.to_u64() {
+                        Some(v) => Some(i128(u128::new(v))),
+                        None => self.to_i64().map(i128::new),
+                    }
+                }
+            }
         }
     }
-
-    fn to_i128(&self) -> Option<i128> {
-        Some(i128::new(*self))
-    }
 }
+
+impl_to_extra_primitive_for_int!(u8);
+impl_to_extra_primitive_for_int!(i8);
+impl_to_extra_primitive_for_int!(u16);
+impl_to_extra_primitive_for_int!(i16);
+impl_to_extra_primitive_for_int!(u32);
+impl_to_extra_primitive_for_int!(i32);
+impl_to_extra_primitive_for_int!(u64);
+impl_to_extra_primitive_for_int!(i64);
+impl_to_extra_primitive_for_int!(usize);
+impl_to_extra_primitive_for_int!(isize);
+
+#[cfg(extprim_has_stable_i128)]
+impl_to_extra_primitive_for_int!(U128);
+#[cfg(extprim_has_stable_i128)]
+impl_to_extra_primitive_for_int!(I128);
 
 macro_rules! impl_to_extra_primitive_for_float {
     ($float:ty, $d:expr, $e:expr, $f:expr) => {
@@ -224,45 +244,40 @@ mod float_to_128_tests {
     }
 }
 
-#[cfg(extprim_channel="unstable")]
-impl<T: ToPrimitive> ToExtraPrimitive for T {
-    default fn to_u128(&self) -> Option<u128> {
-        self.to_u64().map(u128::new)
+#[cfg(extprim_channel = "unstable")]
+default impl<T: ToPrimitive> ToExtraPrimitive for T {
+    fn to_u128(&self) -> Option<u128> {
+        ToPrimitive::to_u128(self).map(u128::from_built_in)
     }
 
-    default fn to_i128(&self) -> Option<i128> {
-        match self.to_u64() {
-            Some(v) => Some(i128(u128::new(v))),
-            None => self.to_i64().map(i128::new),
-        }
+    fn to_i128(&self) -> Option<i128> {
+        ToPrimitive::to_i128(self).map(i128::from_built_in)
     }
 }
 
 impl NumCast for u128 {
-    #[cfg(extprim_channel="unstable")]
     fn from<T: ToPrimitive>(n: T) -> Option<u128> {
-        n.to_u128()
-    }
-
-    #[cfg(extprim_channel="stable")]
-    fn from<T: ToPrimitive>(_: T) -> Option<u128> {
-        panic!("cannot use this outside of nightly rust yet");
+        #[cfg(extprim_has_stable_i128)] {
+            ToPrimitive::to_u128(&n).map(u128::from_built_in)
+        }
+        #[cfg(not(extprim_has_stable_i128))] {
+            panic!("cannot use this before Rust 1.26.0");
+        }
     }
 }
 
 impl NumCast for i128 {
-    #[cfg(extprim_channel="unstable")]
     fn from<T: ToPrimitive>(n: T) -> Option<i128> {
-        n.to_i128()
-    }
-
-    #[cfg(extprim_channel="stable")]
-    fn from<T: ToPrimitive>(_: T) -> Option<i128> {
-        panic!("cannot use this outside of nightly rust yet");
+        #[cfg(extprim_has_stable_i128)] {
+            ToPrimitive::to_i128(&n).map(i128::from_built_in)
+        }
+        #[cfg(not(extprim_has_stable_i128))] {
+            panic!("cannot use this before Rust 1.26.0");
+        }
     }
 }
 
-#[cfg(all(test, extprim_channel="unstable"))]
+#[cfg(all(extprim_has_stable_i128, test))]
 mod num_cast_tests {
     use std::u64;
     use num_traits::NumCast;

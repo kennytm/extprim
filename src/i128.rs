@@ -14,7 +14,7 @@ use error;
 use format_buffer::FormatBuffer;
 use traits::{ToExtraPrimitive, Wrapping};
 use u128::u128;
-#[cfg(extprim_channel="unstable")] use compiler_rt::builtins::{U128, I128};
+#[cfg(extprim_has_stable_i128)] use compiler_rt::builtins::{U128, I128};
 
 //{{{ Structure
 
@@ -60,6 +60,14 @@ impl i128 {
     }
 
     /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_has_stable_i128)]
+    #[cfg(extprim_channel="stable")]
+    pub fn from_built_in(value: I128) -> i128 {
+        i128(u128::from_built_in(value as U128))
+    }
+
+    /// Constructs a new 128-bit integer from the built-in 128-bit integer.
+    #[cfg(extprim_has_stable_i128)]
     #[cfg(extprim_channel="unstable")]
     pub const fn from_built_in(value: I128) -> i128 {
         i128(u128::from_built_in(value as U128))
@@ -91,7 +99,7 @@ impl i128 {
     /// // Note: -123456789012345678901234567890 = -6692605943 << 64 | 4362896299872285998
     /// ```
     #[cfg(extprim_channel="unstable")]
-    pub fn from_parts(hi: i64, lo: u64) -> i128 {
+    pub const fn from_parts(hi: i64, lo: u64) -> i128 {
         i128(u128 { lo: lo, hi: hi as u64 })
     }
 
@@ -141,7 +149,7 @@ impl i128 {
     }
 
     /// Converts this number to the built-in 128-bit integer type.
-    #[cfg(extprim_channel="unstable")]
+    #[cfg(extprim_has_stable_i128)]
     pub fn as_built_in(self) -> I128 {
         (self.high64() as I128) << 64 | self.low64() as I128
     }
@@ -436,13 +444,13 @@ mod add_sub_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_above() {
-        MAX + ONE;
+        let _ = MAX + ONE;
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_add_overflow_below() {
-        MIN + i128::from_parts(-1, !0);
+        let _ = MIN + i128::from_parts(-1, !0);
     }
 
     #[test]
@@ -462,19 +470,19 @@ mod add_sub_tests {
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow_above() {
-        MAX - i128::from_parts(-1, !0);
+        let _ = MAX - i128::from_parts(-1, !0);
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_sub_overflow_below() {
-        MIN - ONE;
+        let _ = MIN - ONE;
     }
 
     #[test]
     #[should_panic(expected="arithmetic operation overflowed")]
     fn test_neg_min() {
-        -MIN;
+        let _ = -MIN;
     }
 
     #[test]
@@ -1281,19 +1289,33 @@ impl ToPrimitive for i128 {
             converted
         }
     }
+
+    #[cfg(extprim_has_stable_i128)]
+    fn to_i128(&self) -> Option<I128> {
+        Some(self.as_built_in())
+    }
+
+    #[cfg(extprim_has_stable_i128)]
+    fn to_u128(&self) -> Option<U128> {
+        if self.high64() >= 0 {
+            Some(self.0.as_built_in())
+        } else {
+            None
+        }
+    }
 }
 
 impl FromPrimitive for i128 {
     fn from_u64(n: u64) -> Option<i128> {
-        n.to_i128()
+        ToExtraPrimitive::to_i128(&n)
     }
 
     fn from_i64(n: i64) -> Option<i128> {
-        n.to_i128()
+        ToExtraPrimitive::to_i128(&n)
     }
 
     fn from_f64(n: f64) -> Option<i128> {
-        n.to_i128()
+        ToExtraPrimitive::to_i128(&n)
     }
 }
 
@@ -1335,7 +1357,7 @@ impl From<i64> for i128 {
     }
 }
 
-#[cfg(extprim_channel="unstable")]
+#[cfg(extprim_has_stable_i128)]
 impl From<I128> for i128 {
     fn from(arg: I128) -> Self {
         i128::from_built_in(arg)
@@ -1358,8 +1380,8 @@ mod conv_tests {
         assert_eq!(MIN.to_f64(), Some(-170141183460469231731687303715884105728.0f64));
     }
 
-    #[cfg(extprim_channel="unstable")]
     #[test]
+    #[cfg(extprim_has_stable_i128)]
     fn test_builtin_i128_to_i128() {
         assert_eq!(i128::from_built_in(0x76571c252122c42e_8cdf8e3b4b75c4d0i128), i128::from_parts(0x76571c252122c42e, 0x8cdf8e3b4b75c4d0));
         assert_eq!(i128::from_built_in(-0x76571c252122c42e_8cdf8e3b4b75c4d0i128), i128::from_parts(-0x76571c252122c42f, 0x732071c4b48a3b30));

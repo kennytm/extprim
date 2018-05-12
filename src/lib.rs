@@ -55,14 +55,13 @@
 //! }
 //! ```
 
-#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, const_fn, i128_type))]
+#![cfg_attr(extprim_channel="unstable", feature(asm, test, specialization, const_fn))]
 // feature requirement:
 //  - asm: to provide a fast implementation of u64_long_mul in x86_64
 //  - test: benchmarking
 //  - specialization: to allow ToExtraPrimitive inherit from ToPrimitive, while ensuring conversion
 //                    between the 128-bit types remain correct
 //  - const_fn: Create 128-bit constants
-//  - i128_type: Conversion between built-in 128-bit integer types.
 
 #![cfg_attr(not(feature="use-std"), no_std)]
 

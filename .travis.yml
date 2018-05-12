@@ -10,22 +10,27 @@ addons:
             - binutils-dev
             - gcc-multilib
 
-os:
-    - linux
-    - osx
-
-rust:
-    - 1.16.0
-    - 1.23.0
-    - beta
-    - nightly
-
-env:
-    - ARCH=x86_64
-    - ARCH=i686
-
 matrix:
     fast_finish: true
+    include:
+        - os: linux
+          rust: 1.16.0
+          env: ARCH=x86_64
+        - os: linux
+          rust: stable
+          env: ARCH=x86_64
+        - os: linux
+          rust: beta
+          env: ARCH=x86_64
+        - os: linux
+          rust: nightly
+          env: ARCH=x86_64
+        - os: osx
+          rust: stable
+          env: ARCH=x86_64
+        - os: linux
+          rust: nightly
+          env: ARCH=i686
 
 install:
     - if [ "$TRAVIS_OS_NAME" = 'linux' ]; then OS=unknown-linux-gnu; else OS=apple-darwin; fi
@@ -40,6 +45,7 @@ script:
     - cargo update
     - cargo build $FLAGS --all --no-default-features
     - cargo test $FLAGS --all --no-default-features
+    - cargo clean
     - cargo build $FLAGS --all --all-features
     - cargo test $FLAGS --all --all-features
     - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --all; fi
