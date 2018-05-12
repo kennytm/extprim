@@ -245,12 +245,12 @@ mod float_to_128_tests {
 }
 
 #[cfg(extprim_channel = "unstable")]
-default impl<T: ToPrimitive> ToExtraPrimitive for T {
-    fn to_u128(&self) -> Option<u128> {
+impl<T: ToPrimitive> ToExtraPrimitive for T {
+    default fn to_u128(&self) -> Option<u128> {
         ToPrimitive::to_u128(self).map(u128::from_built_in)
     }
 
-    fn to_i128(&self) -> Option<i128> {
+    default fn to_i128(&self) -> Option<i128> {
         ToPrimitive::to_i128(self).map(i128::from_built_in)
     }
 }
