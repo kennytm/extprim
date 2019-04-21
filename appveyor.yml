@@ -10,13 +10,13 @@ branches:
 
 environment:
     matrix:
-        - RUST: 1.16.0
+        - RUST: 1.22.1
           ABI: msvc
-        - RUST: 1.16.0
+        - RUST: 1.22.1
           ABI: gnu
-        - RUST: 1.23.0
+        - RUST: 1.26.2
           ABI: msvc
-        - RUST: 1.23.0
+        - RUST: 1.26.2
           ABI: gnu
         - RUST: beta
           ABI: msvc

@@ -8,7 +8,8 @@ use std::ops::*;
 use std::str::FromStr;
 use std::u64;
 
-#[cfg(feature="rand")] use rand::{Rand, Rng};
+#[cfg(feature="rand")] use rand::Rng;
+#[cfg(feature="rand")] use rand::distributions::{Standard, Distribution};
 use num_traits::*;
 
 use compiler_rt::{udiv128, umod128, udivmod128};
@@ -185,8 +186,8 @@ impl u128 {
 //{{{ Rand
 
 #[cfg(feature="rand")]
-impl Rand for u128 {
-    fn rand<R: Rng>(rng: &mut R) -> u128 {
+impl Distribution<u128> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> u128 {
         let (lo, hi) = rng.gen();
         u128::from_parts(lo, hi)
     }

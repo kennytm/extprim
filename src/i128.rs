@@ -7,7 +7,8 @@ use std::num::ParseIntError;
 use std::ops::*;
 use std::str::FromStr;
 
-#[cfg(feature="rand")] use rand::{Rand, Rng};
+#[cfg(feature="rand")] use rand::Rng;
+#[cfg(feature="rand")] use rand::distributions::{Standard, Distribution};
 use num_traits::*;
 
 use error;
@@ -173,9 +174,9 @@ mod structure_tests {
 //{{{ Rand
 
 #[cfg(feature="rand")]
-impl Rand for i128 {
-    fn rand<R: Rng>(rng: &mut R) -> i128 {
-        i128(u128::rand(rng))
+impl Distribution<i128> for Standard {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> i128 {
+        i128(self.sample(rng))
     }
 }
 

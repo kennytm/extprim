@@ -14,7 +14,7 @@ matrix:
     fast_finish: true
     include:
         - os: linux
-          rust: 1.16.0
+          rust: 1.22.1
           env: ARCH=x86_64
         - os: linux
           rust: stable
@@ -51,6 +51,9 @@ script:
     - if [ "$TRAVIS_RUST_VERSION" = 'nightly' ]; then cargo bench --all; fi
 
 after_success:
-    - cargo install cargo-kcov
-    - cargo kcov --print-install-kcov-sh | bash
-    - cargo kcov --coveralls -- --verify
+    - >
+      if [ "$TRAVIS_OS_NAME" = 'linux' ]; then
+        cargo install cargo-kcov &&
+        ( cargo kcov --print-install-kcov-sh | bash ) &&
+        cargo kcov --coveralls -- --verify;
+      fi

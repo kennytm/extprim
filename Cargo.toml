@@ -1,6 +1,6 @@
 [package]
 name = "extprim"
-version = "1.6.0"
+version = "1.7.0"
 authors = ["kennytm <kennytm@gmail.com>"]
 description = "Extra primitive types (u128, i128)"
 repository = "https://github.com/kennytm/extprim"
@@ -29,7 +29,7 @@ coveralls = { repository = "kennytm/extprim" }
 members = ["extprim_literals", "extprim_literals_macros", "extprim_tests"]
 
 [dependencies]
-rand = { version = "0.4", optional = true }
+rand = { version = "0.6", optional = true }
 num-traits = "0.2"
 serde = { version = "1", optional = true, features = ["derive"] }
 
