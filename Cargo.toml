@@ -29,12 +29,16 @@ coveralls = { repository = "kennytm/extprim" }
 members = ["extprim_literals", "extprim_literals_macros", "extprim_tests"]
 
 [dependencies]
+# note: upgrading to rand 0.7 requires 'dyn' support i.e. rust 1.27+
 rand = { version = "0.6", optional = true }
 num-traits = "0.2"
 serde = { version = "1", optional = true, features = ["derive"] }
 
 [dev-dependencies]
 extprim_literals = { version = "2.0", path = "./extprim_literals" }
+# note: pin the version of serde_derive to 1.0.98 or below,
+# so we don't need to depend on proc-macro2 v1.0
+serde_derive = ">=1.0.0,<=1.0.98"
 
 [build-dependencies]
 rustc_version = "0.2"
