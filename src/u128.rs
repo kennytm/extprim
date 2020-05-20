@@ -881,7 +881,7 @@ fn u64_long_mul(left: u64, right: u64) -> u128 {
 fn u64_long_mul(left: u64, right: u64) -> u128 {
     unsafe {
         let mut result: u128 = ::std::mem::uninitialized();
-        asm!("
+        llvm_asm!("
             movq $2, %rax
             mulq $3
             movq %rax, $0
