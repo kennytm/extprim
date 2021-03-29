@@ -41,8 +41,8 @@ extprim_literals = { version = "2.0", path = "./extprim_literals" }
 serde_derive = ">=1.0.0,<=1.0.98"
 
 [build-dependencies]
-rustc_version = "0.2"
-semver = "0.9"
+rustc_version = "0.3"
+semver = "0.11"
 
 [features]
 default = ["use-std", "rand", "serde"]
