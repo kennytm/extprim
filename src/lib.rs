@@ -55,13 +55,12 @@
 //! }
 //! ```
 
-#![cfg_attr(extprim_channel="unstable", feature(llvm_asm, test, specialization, const_fn))]
+#![cfg_attr(extprim_channel="unstable", feature(llvm_asm, test, specialization))]
 // feature requirement:
 //  - llvm_asm: to provide a fast implementation of u64_long_mul in x86_64
 //  - test: benchmarking
 //  - specialization: to allow ToExtraPrimitive inherit from ToPrimitive, while ensuring conversion
 //                    between the 128-bit types remain correct
-//  - const_fn: Create 128-bit constants
 
 #![cfg_attr(not(feature="use-std"), no_std)]
 
